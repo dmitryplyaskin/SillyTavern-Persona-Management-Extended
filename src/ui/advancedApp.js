@@ -9,6 +9,7 @@ import {
   restoreNativePersonaLinksBlocks,
 } from "./components/personaLinksGlobalSettings.js";
 import { createAdditionalDescriptionsCard } from "./components/additionalDescriptions.js";
+import { createSettingsCard } from "./components/settingsCard.js";
 import { createUiBus, UI_EVENTS } from "./uiBus.js";
 
 function getPersonaName() {
@@ -35,6 +36,7 @@ export function createAdvancedApp(rootEl) {
 
   const linksCard = createPersonaLinksGlobalSettingsCard({ bus });
   const additionalCard = createAdditionalDescriptionsCard();
+  const settingsCard = createSettingsCard();
 
   const personaList = createPersonaList({
     getPowerUser: () => power_user,
@@ -46,6 +48,7 @@ export function createAdvancedApp(rootEl) {
     currentPersonaPanel.update();
     linksCard.update();
     additionalCard.update();
+    settingsCard.update();
   });
   bus.on(UI_EVENTS.PERSONA_DESC_CHANGED, () => {
     personaList.updatePreviewOnly();
@@ -64,11 +67,13 @@ export function createAdvancedApp(rootEl) {
     right.appendChild(currentPersonaPanel.el);
     right.appendChild(linksCard.el);
     right.appendChild(additionalCard.el);
+    right.appendChild(settingsCard.el);
 
     personaList.mount({ autoScroll });
     currentPersonaPanel.mount();
     linksCard.mount();
     additionalCard.mount();
+    settingsCard.mount();
   }
 
   return {
@@ -80,6 +85,7 @@ export function createAdvancedApp(rootEl) {
       currentPersonaPanel.update();
       linksCard.update();
       additionalCard.update();
+      settingsCard.update();
     },
     refreshPersonas({ invalidateCache = false, autoScroll = false } = {}) {
       if (!mounted) return;
@@ -90,6 +96,7 @@ export function createAdvancedApp(rootEl) {
       currentPersonaPanel.update();
       linksCard.update();
       additionalCard.update();
+      settingsCard.update();
     },
     destroy() {
       if (!mounted) return;

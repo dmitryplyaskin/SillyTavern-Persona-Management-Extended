@@ -33,10 +33,17 @@ import {
  * @typedef {object} PmeData
  * @property {number} version
  * @property {PmeBlock[]} blocks
+ * @property {{wrapperEnabled:boolean, wrapperTemplate:string, additionalJoiner:string}} settings
  */
 
 // Clean start: no migrations (dev stage)
 const SCHEMA_VERSION = 1;
+
+const DEFAULT_SETTINGS = Object.freeze({
+  wrapperEnabled: false,
+  wrapperTemplate: "<tag>{{PROMPT}}</tag>",
+  additionalJoiner: "\\n\\n",
+});
 
 let saveTimer = /** @type {number|undefined} */ (undefined);
 
@@ -66,6 +73,15 @@ export function getPmeData() {
 
   descriptor.pme.version = SCHEMA_VERSION;
   descriptor.pme.blocks ??= [];
+  descriptor.pme.settings ??= {};
+  if (typeof descriptor.pme.settings !== "object") descriptor.pme.settings = {};
+  if (typeof descriptor.pme.settings.wrapperEnabled !== "boolean")
+    descriptor.pme.settings.wrapperEnabled = DEFAULT_SETTINGS.wrapperEnabled;
+  if (typeof descriptor.pme.settings.wrapperTemplate !== "string")
+    descriptor.pme.settings.wrapperTemplate = DEFAULT_SETTINGS.wrapperTemplate;
+  if (typeof descriptor.pme.settings.additionalJoiner !== "string")
+    descriptor.pme.settings.additionalJoiner =
+      DEFAULT_SETTINGS.additionalJoiner;
 
   // Normalize blocks (defensive)
   for (const b of descriptor.pme.blocks) {
@@ -96,6 +112,22 @@ export function getPmeData() {
 
 export function savePmeData() {
   scheduleSave();
+}
+
+/**
+ * Persona-scoped PME UI/prompt settings.
+ * Stored at `power_user.persona_descriptions[avatarId].pme.settings`.
+ */
+export function getPmeSettings() {
+  return getPmeData().settings;
+}
+
+/**
+ * @param {Partial<{wrapperEnabled:boolean, wrapperTemplate:string, additionalJoiner:string}>} patch
+ */
+export function patchPmeSettings(patch) {
+  Object.assign(getPmeSettings(), patch);
+  savePmeData();
 }
 
 /**

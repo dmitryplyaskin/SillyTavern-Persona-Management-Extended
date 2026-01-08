@@ -4,6 +4,11 @@
   padding: 10px 0;
 }
 
+/* Header: Advanced mode toggle next to native buttons */
+.pme-advanced-toggle > span {
+  margin-left: 6px;
+}
+
 .pme-panel {
   display: flex;
   flex-direction: column;
@@ -477,5 +482,66 @@
 /* Settings */
 .pme-settings .menu_button i.fa-solid {
   margin-right: 6px;
+}
+
+/* Advanced UI: Settings card */
+.pme-settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pme-settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pme-settings-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pme-settings-title-row .checkbox_label {
+  margin: 0;
+}
+
+.pme-settings-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.pme-settings-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.pme-settings-textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.pme-settings-checkbox {
+  margin: 0;
+}
+
+.pme-settings-footer {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.pme-settings-help {
+  font-size: 0.85rem;
+  line-height: 1.2;
+  opacity: 0.8;
+}
+
+@media (max-width: 900px) {
+  .pme-settings-row {
+    flex-direction: column;
+  }
 }
 

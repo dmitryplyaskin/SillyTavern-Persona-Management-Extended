@@ -7,15 +7,33 @@
 
 ## 0) TL;DR
 
-Мы делаем **расширенный режим Persona Management** прямо в табе Persona Management:
+Расширение добавляет **расширенный режим Persona Management** прямо в табе Persona Management:
 
 - **Normal mode**: работает штатный UI SillyTavern.
 - **Advanced mode**: штатный контент Persona Management **скрывается**, и показывается наш UI (наш “Persona Manager v2”).
 
-Пользователь управляет **группами и блоками “Additional Descriptions”**, включением/выключением, привязками к чату/персонажу.  
-Расширение **собирает итоговый persona prompt** и **инжектит его только на время генерации**, не “портя” поле `#persona_description` и не создавая дубли.
+В Advanced mode сейчас реализовано:
+
+- **Список персон** слева: поиск, сортировки, превью описания, бейдж _Lorebook_.
+- **Панель текущей персоны** справа (вместо штатной): редактирование Persona Description + Position (+ Depth/Role при `In-chat @ Depth`), токены, кнопки rename/duplicate/delete/image/lore и т.п.
+- **Sync with original persona (toggle)**: можно “отвязать” расширенную версию описания от оригинальной (редактировать локально) и затем снова “привязать”, выбрав источник истины.
+- **Connections & Global Settings**: перенесены из штатного UI путём **перемещения реальных DOM‑нод** (чтобы сохранить обработчики ST).
+- **Additional Descriptions**: редактор блоков (item/group) с enable/disable, collapse, удалением, и **ручным reorder** (стрелки вверх/вниз), плюс fullscreen‑режим.
+- **Settings**: настройки сборки промпта (wrapper + joiner для Additional Descriptions).
+
+Важно: **инжект в промпт на генерации реализован через runtime‑подмену**:
+
+- при старте генерации (после выполнения slash‑команд) расширение временно подменяет `power_user.persona_description` (и при необходимости position/depth/role),
+- добавляет **Additional Descriptions** (только enabled) в конец текста,
+- затем гарантированно откатывает значения на `GENERATION_ENDED`/`GENERATION_STOPPED`.
+
+Это нужно, чтобы:
+
+- **не засорять “оригинальную” персону** служебными шаблонами/переменными расширения,
+- но при этом **влиять на итоговый prompt** ровно на время генерации.
 
 Дополнительно:
+
 - Advanced UI переведён на архитектуру **mount один раз → update точечно** (без постоянного полного ререндера).
 - В Advanced UI перенесены штатные блоки **Connections & Global Settings** (перемещаем реальные DOM-ноды ST, чтобы не ломать обработчики).
 - Additional Descriptions реализованы как **упорядоченные blocks[]** (item/group) — порядок важен для будущей сборки промпта.
@@ -30,11 +48,13 @@
 - **Additional Descriptions v2**:
   - группы (folders/sets) с массовым enable/disable;
   - блоки внутри групп;
-  - быстрые действия (toggle all, reorder, search по блокам, импорт/экспорт и т.д. — постепенно);
-  - привязки: “на этот чат”, “на этого персонажа/группу” (character/group), плюс глобальные.
-- **Никакой порчи базового описания**: advanced-настройки должны жить отдельно и применяться **только при сборке промпта**.
+  - быстрые действия (reorder уже есть; остальное — постепенно).
+- **Управление Persona Description без ломания штатного UI**:
+  - расширенный редактор (токены, удобные контролы);
+  - опциональное “отвязывание” (локальная версия описания/позиции/глубины/роли на персону).
+- **Никакой порчи базового описания на диск**: любые будущие инжекты должны быть только runtime.
 - **Переживает перезапуски**: данные сохраняются и восстанавливаются.
-- **Совместимость с backup/restore персон** (если возможно) и предсказуемое поведение при переключении персон/чатов.
+- **Совместимость с backup/restore персон**: данные хранятся внутри `power_user.persona_descriptions[avatarId]` и попадают в бэкап персон штатно.
 
 ---
 
@@ -52,7 +72,7 @@
 - **Base persona description**: значение `power_user.persona_description` и UI-поле `#persona_description`.
 - **Additional Description**: дополнительный блок текста, включаемый/выключаемый.
 - **Group**: группа блоков Additional Descriptions, тоже включаемая/выключаемая.
-- **Override**: правило активации (например “в этом чате включить группу X”).
+- **Override (planned)**: правило активации (например “в этом чате включить группу X”). Сейчас override’ы не реализованы.
 - **Advanced mode**: наш UI внутри `#PersonaManagement`.
 
 ---
@@ -142,19 +162,25 @@
 
 ### 6.3 Инжект в промпт (главная идея v2)
 
-Ключевая стратегия:
+Состояние на текущий момент:
+
+- В `manifest.json` задан `generate_interceptor: "pmeGenerateInterceptor"`.
+- Реальная подмена применяется **раньше**, чем вызывается `runGenerationInterceptors()` (см. ниже), чтобы попасть в `persona`, вычисляемую SillyTavern.
+- `globalThis.pmeGenerateInterceptor` остаётся как “safety net” (если ранний хук не сработал).
+
+Стратегия (как реализовано сейчас):
 
 - Не трогаем содержимое `#persona_description` как источник истины.
 - Храним **состояние** отдельно (наша модель данных).
 - На генерации вычисляем итоговый текст:
-  - `finalPersonaText = basePersonaText + enabledAdditions(...)` (с учетом групп/override’ов),
-  - временно подменяем **только runtime** значение (например `power_user.persona_description`) и/или нужные места, откуда ST собирает prompt,
+  - `finalPersonaText = basePersonaText + enabledAdditions(...)`,
+  - временно подменяем **runtime** значения `power_user.persona_description` (+ при разлинковке также position/depth/role),
   - после генерации откатываем.
 
 Технические варианты “хука на генерацию”:
 
-- **A (рекомендуется)**: использовать `manifest.generate_interceptor` (интерсептор запускается централизованно через `runGenerationInterceptors`).
-- **B**: слушать `event_types.GENERATION_STARTED` и откатывать на событии завершения (нужно найти/зафиксировать, какие события гарантированно стреляют при abort/ошибках; если их нет — делать собственный watchdog/try/finally вокруг перехвата).
+- **A (реально используемая точка для применения патча)**: `event_types.GENERATION_AFTER_COMMANDS` — это важно, потому что SillyTavern вычисляет `persona` через `getCharacterCardFields()` **до** `runGenerationInterceptors()`.
+- **B (safety net)**: `manifest.generate_interceptor` (`runGenerationInterceptors`) — поздняя стадия, но может быть полезна для совместимости.
 
 Почему это важно: так мы избегаем классов багов “дублирование при переключении персон/чатов” и “персистентная порча описания”.
 
@@ -163,38 +189,74 @@
 Файл: `public/scripts/extensions.js` вызывает интерсепторы так:
 `globalThis[manifest.generate_interceptor](chat, contextSize, abort, type)`
 
-Значит, для использования варианта A нужно:
+Что важно понимать про порядок выполнения в SillyTavern:
 
-- В `manifest.json` добавить поле:
-  - `generate_interceptor`: строка-ключ, например `"pmeGenerateInterceptor"`
-- В `index.js` зарегистрировать функцию в global scope:
-  - `globalThis.pmeGenerateInterceptor = async (chat, contextSize, abort, type) => { ... }`
+- SillyTavern вычисляет строку `persona` (через `getCharacterCardFields()`) **до** `runGenerationInterceptors()`.
+- Поэтому если нужно, чтобы подмена повлияла на `persona`/story string/WI‑скан — подмену нужно сделать **раньше**, чем `getCharacterCardFields()`.
 
-Важно:
+Как PME делает это сейчас (реальная реализация):
 
-- интерсептор может **мутировать runtime-состояния** перед сборкой промпта (например, временно подменить `power_user.persona_description`), но **обязан** сделать откат;
-- `abort(true|false)` позволяет прервать генерацию (нам обычно не нужно, но полезно для fail-safe).
+- **Основной путь (ранний, корректный)**: подписка на `event_types.GENERATION_AFTER_COMMANDS` → `applyPatch(...)`.
+- **Откат**: на `event_types.GENERATION_ENDED` и `event_types.GENERATION_STOPPED` → `restorePatch(...)`.
+- **Safety net**: `globalThis.pmeGenerateInterceptor` всё ещё регистрируется и вызывает `applyPatch(...)`, но это поздняя стадия (может не попасть в `persona`, но влияет на другие потребители `power_user.persona_description`).
+
+Гейт:
+
+- Если `extension_settings.personaManagementExtended.enabled === false` → **ничего не подменяем**, Additional Descriptions не применяются к prompt.
+
+Технически, чтобы `runGenerationInterceptors()` видел интерсептор, нужно:
+
+- В `manifest.json` иметь `generate_interceptor: "pmeGenerateInterceptor"` (у нас уже есть)
+- Зарегистрировать в global scope функцию:
+  - `globalThis.pmeGenerateInterceptor = async (chat, contextSize, abort, type) => { ... }` (делается в `src/injector.js`)
+
+Важно (актуально):
+
+- Мы мутируем только runtime‑значения `power_user.*` и **никогда не сохраняем** их на диск.
+- Откат обязателен даже при abort/stop (для этого слушаем `GENERATION_STOPPED`).
+- В `src/injector.js` есть “таймер‑страховка” отката на случай, если end‑ивенты не отработали.
+
+#### 6.3.2 Алгоритм сборки итогового текста (PME)
+
+Сборка `finalPersonaText` для генерации:
+
+- **База**:
+  - если persona “linked” (`pme.linkedToNative !== false`) → берём `power_user.persona_description`
+  - если “unlinked” (`pme.linkedToNative === false`) → берём `pme.local.description` (там могут быть шаблоны/переменные, которые нельзя сохранять в “оригинал”)
+- **Additional Descriptions**:
+
+  - берём только `text` у enabled блоков,
+  - порядок строго как в `pme.blocks` (и внутри group — как в `group.items`),
+  - **title/названия групп не добавляются в prompt** (они UI-only),
+  - пустые/пробельные тексты (по `trim()`) скипаются, но **в prompt вставляется исходный `text` без модификаций**,
+  - склейка идёт через `pme.settings.additionalJoiner` (по умолчанию `\\n\\n`, поддерживает escape‑последовательности).
+
+- **Wrapper (опционально)**:
+  - если `pme.settings.wrapperEnabled === true`, итоговый текст оборачивается шаблоном `pme.settings.wrapperTemplate`,
+  - в шаблоне заменяется плейсхолдер `{{PROMPT}}` на итоговый текст.
 
 ---
 
 ## 7) Хранилище данных (persist) — что и где хранить
 
-У нас три уровня данных:
+На данный момент реально используется:
 
-1. **На персону (persona-scoped)** — основной уровень  
-   Храним в `power_user.persona_descriptions[avatarId]` под нашим namespace-ключом, например:
-   - `power_user.persona_descriptions[avatarId].pme = { ... }`
+1. **На персону (persona-scoped)** — основной уровень.  
+   Храним в `power_user.persona_descriptions[avatarId].pme` (единый namespace‑объект расширения).
 
 Плюсы:
 
 - переживает перезапуск;
 - попадает в штатный Backup/Restore персон (там сохраняют `persona_descriptions` целиком).
 
-2. **На чат (chat-scoped overrides)**  
-   Храним в `chat_metadata`, сохраняем через `saveMetadataDebounced()`.
+2. **Глобальные настройки расширения** (`extension_settings.personaManagementExtended`):
 
-3. **Глобальные настройки расширения** (UI prefs, дефолты, флаги)
-   Храним в `extension_settings.<ourKey>` (персистентно).
+   - `enabled: boolean`: **гейт для инжекта на генерации**. Если `enabled === false`, расширение не подменяет persona description и **не применяет Additional Descriptions** к prompt.
+     (UI может оставаться доступным для редактирования данных, но на генерацию это не влияет.)
+
+3. **Локальные UI‑предпочтения аккаунта** (`accountStorage`):
+   - `pme_advanced_mode` — включён ли Advanced mode,
+   - `pme_persona_sort` — режим сортировки списка персон.
 
 ---
 
@@ -202,12 +264,20 @@
 
 Namespace: `pme` (пример)
 
-### 8.1 Персона-уровень (актуально)
+### 8.1 Персона-уровень (актуально на сейчас)
 
 `power_user.persona_descriptions[avatarId].pme`:
 
-- `version: number`
-- `blocks: Block[]`
+- **Additional Descriptions**:
+  - `version: 1`
+  - `blocks: PmeBlock[]`
+- **Sync/Unlink Persona Description**:
+  - `linkedToNative: boolean` (по умолчанию `true`)
+  - `local: { description, position, depth, role }` (используется, когда `linkedToNative === false`)
+- **Settings**:
+  - `settings.wrapperEnabled: boolean` (по умолчанию `false`)
+  - `settings.wrapperTemplate: string` (по умолчанию `<tag>{{PROMPT}}</tag>`, заменяем `{{PROMPT}}` на итоговый текст)
+  - `settings.additionalJoiner: string` (по умолчанию `\\n\\n`; поддерживаются escape-последовательности `\\n`, `\\t`, `\\r`, `\\\\`)
 
 `Block` бывает двух типов:
 
@@ -220,50 +290,39 @@ Namespace: `pme` (пример)
 
 ### 8.2 Чат-уровень (override)
 
-`chat_metadata.pme`:
-
-- `enabledGroupIds?: string[]` _(или “diff”: включить/выключить относительно базы)_
-- `enabledItemIds?: string[]`
+Не реализовано.
 
 ### 8.3 Персонаж/группа (character/group) overrides
 
-Опции:
-
-- **A**: хранить маппинг у персоны: `pme.bindings[characterKey] = { ... }`
-- **B**: хранить маппинг глобально в `extension_settings.pme.bindings` (если привязки общие)
-
-На старте проще A: “всё, что про эту персону” — внутри этой персоны.
+Не реализовано.
 
 ---
 
 ## 9) План реализации (roadmap)
 
-### Этап 0 — каркас
+### Этап 0 — каркас (сделано)
 
-- Создать `index.js` инициализацию.
-- Создать `ui/` слой: рендер контейнера + переключатель Normal/Advanced.
-- Создать `store/` слой: чтение/запись `pme` в `power_user.persona_descriptions[user_avatar]` + миграции схем.
-- Создать `engine/` слой: сборка `finalPersonaText` по активным группам/блокам + overrides.
+- `index.js`: инициализация + подписки на события ST.
+- `ui/`: контейнер + переключатель Normal/Advanced + Advanced UI.
+- `store/`: persist `pme` (blocks, linked/local).
+- `injector`: инжект на генерации + гарантированный откат.
 
-### Этап 1 — UI Advanced (минимальный)
+### Этап 1 — UI Advanced (сделано базовое)
 
-- В advanced показать:
-  - список групп,
-  - внутри — элементы,
-  - toggle enable,
-  - add/remove,
-  - редактирование текста.
+- Список персон: поиск/сорт/превью.
+- Панель текущей персоны: описание + position/depth/role + sync/unlink.
+- Additional Descriptions: item/group, enable/disable, reorder, fullscreen.
+- Перенос нативных Connections & Global Settings.
 
-### Этап 2 — безопасный инжект на генерацию
+### Этап 2 — безопасный инжект на генерацию (сделано)
 
-- Реализовать interceptor/хуки.
+- Реализовать injector/хуки (реализовано: `src/injector.js`).
 - Гарантированный откат при abort/ошибках.
 - Зафиксировать инвариант: `#persona_description` не меняем автоматически.
 
 ### Этап 3 — привязки
 
-- На чат: сохранять overrides в `chat_metadata.pme`.
-- На character/group: хранить маппинг и применять при `CHAT_CHANGED` / смене персонажа.
+Пока не реализовано (override’ы на чат/character/group отсутствуют).
 
 ### Этап 4 — QoL
 
@@ -308,7 +367,8 @@ Namespace: `pme` (пример)
   - `additionalDescriptions.js` — Additional Descriptions (blocks item/group, коллапс, fullscreen modal),
   - `dom.js` — DOM helpers.
 - `src/store/personaStore.js` — persona-scoped persist для `pme` (blocks[]).
-- `src/injector.js` — placeholder generate interceptor (пока no-op).
+- `src/injector.js` — инжект на генерацию: runtime‑подмена `power_user.persona_description` + Additional Descriptions + откат.
+- `settings.html` / `settings.js` — настройки расширения (enable, import legacy, clear data).
 
 ---
 

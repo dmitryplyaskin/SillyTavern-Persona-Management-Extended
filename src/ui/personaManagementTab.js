@@ -16,6 +16,99 @@ function getDefaultBlock() {
   return document.getElementById("persona-management-block");
 }
 
+let cachedNativeTitle =
+  /** @type {{ text: string, i18n: string|null } | null} */ (null);
+let cachedNativeDrawerIcon =
+  /** @type {{ title: string|null, i18n: string|null } | null} */ (null);
+
+function getPersonaManagementTitleSpan(container) {
+  const h3 = container.querySelector("h3");
+  if (!(h3 instanceof HTMLElement)) return null;
+  const span = h3.querySelector("span");
+  if (!(span instanceof HTMLSpanElement)) return null;
+  return span;
+}
+
+function getPersonaManagementDrawerIcon() {
+  const icon = document.querySelector(
+    "#persona-management-button .drawer-icon"
+  );
+  if (!(icon instanceof HTMLElement)) return null;
+  return icon;
+}
+
+function refreshNativeTitleCache(container) {
+  const titleSpan = getPersonaManagementTitleSpan(container);
+  if (
+    titleSpan &&
+    (titleSpan.textContent ?? "").trim() !== "Persona Management Extended"
+  ) {
+    cachedNativeTitle = {
+      text: titleSpan.textContent ?? "",
+      i18n: titleSpan.getAttribute("data-i18n"),
+    };
+  }
+  if (!cachedNativeTitle) {
+    cachedNativeTitle = { text: "Persona Management", i18n: null };
+  }
+
+  const icon = getPersonaManagementDrawerIcon();
+  const iconTitle = icon?.getAttribute("title") ?? null;
+  if (icon && iconTitle !== "Persona Management Extended") {
+    cachedNativeDrawerIcon = {
+      title: iconTitle,
+      i18n: icon.getAttribute("data-i18n"),
+    };
+  }
+  if (!cachedNativeDrawerIcon) {
+    cachedNativeDrawerIcon = { title: null, i18n: null };
+  }
+}
+
+function applyPersonaManagementTitle(container, advancedEnabled) {
+  // Capture current native title so we can restore it later (including any i18n-applied text).
+  refreshNativeTitleCache(container);
+
+  const titleSpan = getPersonaManagementTitleSpan(container);
+  const icon = getPersonaManagementDrawerIcon();
+
+  if (advancedEnabled) {
+    if (titleSpan) {
+      titleSpan.textContent = "Persona Management Extended";
+      // Prevent SillyTavern i18n from rewriting the native title back.
+      titleSpan.removeAttribute("data-i18n");
+    }
+    if (icon) {
+      icon.setAttribute("title", "Persona Management Extended");
+      icon.removeAttribute("data-i18n");
+    }
+    return;
+  }
+
+  if (titleSpan && cachedNativeTitle) {
+    titleSpan.textContent = cachedNativeTitle.text;
+    if (cachedNativeTitle.i18n) {
+      titleSpan.setAttribute("data-i18n", cachedNativeTitle.i18n);
+    } else {
+      titleSpan.removeAttribute("data-i18n");
+    }
+  }
+
+  if (icon && cachedNativeDrawerIcon) {
+    if (cachedNativeDrawerIcon.title) {
+      icon.setAttribute("title", cachedNativeDrawerIcon.title);
+    } else {
+      icon.removeAttribute("title");
+    }
+
+    if (cachedNativeDrawerIcon.i18n) {
+      icon.setAttribute("data-i18n", cachedNativeDrawerIcon.i18n);
+    } else {
+      icon.removeAttribute("data-i18n");
+    }
+  }
+}
+
 function getOrCreateAdvancedRoot(container) {
   let root = document.getElementById(PME.dom.rootId);
   if (root) return root;
@@ -42,7 +135,7 @@ function ensureAdvancedToggle() {
   }
 
   const label = document.createElement("label");
-  label.className = "checkbox_label flexNoGap";
+  label.className = "checkbox_label flexNoGap pme-advanced-toggle";
   label.title = "Switch between Normal and Advanced Persona Management UI";
   label.style.marginLeft = "10px";
   label.style.userSelect = "none";
@@ -83,6 +176,7 @@ export function applyMode() {
   if (!container) return;
 
   const advancedEnabled = getAdvancedModeEnabled();
+  applyPersonaManagementTitle(container, advancedEnabled);
 
   // Drawer open/close state (so we can auto-scroll only when the UI is opened)
   const drawerOpen = !container.classList.contains("closedDrawer");
