@@ -463,3 +463,8 @@
   padding-left: 18px;
 }
 
+/* Settings */
+.pme-settings .menu_button i.fa-solid {
+  margin-right: 6px;
+}
+

@@ -11,6 +11,7 @@ import {
   refreshAdvancedUIIfVisible,
 } from "./src/ui/personaManagementTab.js";
 import { registerGenerateInterceptor } from "./src/injector.js";
+import { initSettingsUI, loadSettings } from "./settings.js";
 
 function tryInitUI() {
   try {
@@ -23,6 +24,9 @@ function tryInitUI() {
 
 function init() {
   log("Initializing extension...");
+
+  // Load persistent extension settings early
+  loadSettings();
 
   registerGenerateInterceptor();
 
@@ -72,4 +76,13 @@ try {
   init();
 } catch (e) {
   error("Fatal init error", e);
+}
+
+// Settings UI is available only after ST loads extension settings screen
+try {
+  eventSource.on(event_types.EXTENSION_SETTINGS_LOADED, () => {
+    setTimeout(initSettingsUI, 200);
+  });
+} catch (e) {
+  // ignore
 }

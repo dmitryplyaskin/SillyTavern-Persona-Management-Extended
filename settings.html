@@ -1,0 +1,60 @@
+<div id="pme_settings" class="pme-settings">
+  <div class="inline-drawer">
+    <div class="inline-drawer-toggle inline-drawer-header">
+      <div class="flex-container alignitemscenter margin0">
+        <b>Persona Management Extended</b>
+      </div>
+      <div
+        class="inline-drawer-icon fa-solid fa-circle-chevron-down down"
+      ></div>
+    </div>
+
+    <div class="inline-drawer-content">
+      <div class="flex-container flexFlowColumn">
+        <label class="checkbox_label">
+          <input id="pme-enabled" type="checkbox" />
+          <span>Enable extension</span>
+        </label>
+        <small class="text_muted">
+          When disabled, SillyTavern will use the default persona behavior.
+          Additional Descriptions and other PME features will not be applied.
+        </small>
+
+        <hr class="sysHR" />
+
+        <div class="flex-container flexFlowColumn">
+          <button
+            id="pme-import-from-user-persona-extended"
+            class="menu_button"
+            type="button"
+            style="margin-top: 10px; width: 100%"
+          >
+            <i class="fa-solid fa-file-import"></i> Import from User Persona
+            Extended
+          </button>
+          <small class="text_muted">
+            Imports Additional Descriptions from the legacy "User Persona
+            Extended" extension and adapts them to this extension's format
+          </small>
+        </div>
+
+        <hr class="sysHR" />
+
+        <div class="flex-container flexFlowColumn">
+          <button
+            id="pme-clear-all-data"
+            class="menu_button"
+            type="button"
+            style="margin-top: 10px; width: 100%"
+          >
+            <i class="fa-solid fa-trash"></i> Clear All Extension Data
+          </button>
+          <small class="text_muted">
+            This will permanently delete all saved Additional Descriptions
+            blocks for all personas and reset extension settings
+          </small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
