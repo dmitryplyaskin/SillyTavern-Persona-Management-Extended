@@ -1,4 +1,5 @@
 import { el, setHidden } from "./dom.js";
+import { UI_EVENTS } from "../uiBus.js";
 
 /**
  * Native Persona Management blocks we temporarily relocate into our Advanced UI.
@@ -73,7 +74,7 @@ export function restoreNativePersonaLinksBlocks() {
   }
 }
 
-export function createPersonaLinksGlobalSettingsCard() {
+export function createPersonaLinksGlobalSettingsCard({ bus } = {}) {
   let collapsed = true;
 
   const root = el("div", "pme-card pme-links");
@@ -104,6 +105,7 @@ export function createPersonaLinksGlobalSettingsCard() {
     e.stopPropagation();
     collapsed = !collapsed;
     syncCollapsedUI();
+    bus?.emit(UI_EVENTS.LINKS_TOGGLED, { collapsed });
     if (!collapsed) {
       // Ensure native controls are visible and attached when expanding
       relocateNativeBlocks(body);

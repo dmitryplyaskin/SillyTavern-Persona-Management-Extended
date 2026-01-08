@@ -4,6 +4,7 @@ import { getTokenCountAsync } from "/scripts/tokenizers.js";
 import { getOrCreatePersonaDescriptor } from "/scripts/personas.js";
 
 import { el, setHidden } from "./dom.js";
+import { UI_EVENTS } from "../uiBus.js";
 
 function clickNative(id) {
   const node = document.getElementById(id);
@@ -53,11 +54,7 @@ function makeIconButton(title, iconClass, onClick, { danger = false } = {}) {
   return btn;
 }
 
-export function createCurrentPersonaPanel({
-  getPersonaName,
-  onDescriptionChanged,
-  onNativePersonaListMayChange,
-}) {
+export function createCurrentPersonaPanel({ getPersonaName, bus }) {
   const root = el("div", "pme-card pme-current");
 
   // Header
@@ -68,7 +65,7 @@ export function createCurrentPersonaPanel({
   buttons.appendChild(
     makeIconButton("Rename Persona", "fa-pencil", () => {
       clickNative("persona_rename_button");
-      window.setTimeout(() => onNativePersonaListMayChange?.(), 150);
+      window.setTimeout(() => bus?.emit(UI_EVENTS.PERSONA_LIST_INVALIDATED, {}), 150);
     })
   );
   buttons.appendChild(
@@ -84,13 +81,13 @@ export function createCurrentPersonaPanel({
   buttons.appendChild(
     makeIconButton("Change Persona Image", "fa-image", () => {
       clickNative("persona_set_image_button");
-      window.setTimeout(() => onNativePersonaListMayChange?.(), 250);
+      window.setTimeout(() => bus?.emit(UI_EVENTS.PERSONA_LIST_INVALIDATED, {}), 250);
     })
   );
   buttons.appendChild(
     makeIconButton("Duplicate Persona", "fa-clone", () => {
       clickNative("persona_duplicate_button");
-      window.setTimeout(() => onNativePersonaListMayChange?.(), 250);
+      window.setTimeout(() => bus?.emit(UI_EVENTS.PERSONA_LIST_INVALIDATED, {}), 250);
     })
   );
   buttons.appendChild(
@@ -99,7 +96,7 @@ export function createCurrentPersonaPanel({
       "fa-skull",
       () => {
         clickNative("persona_delete_button");
-        window.setTimeout(() => onNativePersonaListMayChange?.(), 350);
+        window.setTimeout(() => bus?.emit(UI_EVENTS.PERSONA_LIST_INVALIDATED, {}), 350);
       },
       { danger: true }
     )
@@ -208,7 +205,7 @@ export function createCurrentPersonaPanel({
     saveSettingsDebounced();
     refreshTokens();
     syncNativePersonaControls();
-    onDescriptionChanged?.();
+    bus?.emit(UI_EVENTS.PERSONA_DESC_CHANGED, {});
   };
 
   textarea.addEventListener("input", onDescInput);

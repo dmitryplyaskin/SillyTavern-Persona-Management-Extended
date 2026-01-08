@@ -9,6 +9,7 @@ import {
   restoreNativePersonaLinksBlocks,
 } from "./components/personaLinksGlobalSettings.js";
 import { createAdditionalDescriptionsCard } from "./components/additionalDescriptions.js";
+import { createUiBus, UI_EVENTS } from "./uiBus.js";
 
 function getPersonaName() {
   return power_user?.personas?.[user_avatar] ?? user_avatar ?? "";
@@ -16,6 +17,7 @@ function getPersonaName() {
 
 export function createAdvancedApp(rootEl) {
   let mounted = false;
+  const bus = createUiBus();
 
   const panel = el("div", "pme-panel");
   const header = el("div", "pme-header");
@@ -29,24 +31,24 @@ export function createAdvancedApp(rootEl) {
   layout.appendChild(right);
   panel.appendChild(layout);
 
-  const currentPersonaPanel = createCurrentPersonaPanel({
-    getPersonaName,
-    onDescriptionChanged: () => personaList.updatePreviewOnly(),
-    onNativePersonaListMayChange: () =>
-      personaList.update({ invalidateCache: true, autoScroll: false }),
-  });
+  const currentPersonaPanel = createCurrentPersonaPanel({ getPersonaName, bus });
 
-  const linksCard = createPersonaLinksGlobalSettingsCard();
+  const linksCard = createPersonaLinksGlobalSettingsCard({ bus });
   const additionalCard = createAdditionalDescriptionsCard();
 
-  const personaList = createPersonaList({
-    getPowerUser: () => power_user,
-    onPersonaChanged: () => {
-      // ST state updated; refresh only the parts that depend on current persona.
-      currentPersonaPanel.update();
-      linksCard.update();
-      additionalCard.update();
-    },
+  const personaList = createPersonaList({ getPowerUser: () => power_user, bus });
+
+  // Wire updates via bus (decoupled)
+  bus.on(UI_EVENTS.PERSONA_CHANGED, () => {
+    currentPersonaPanel.update();
+    linksCard.update();
+    additionalCard.update();
+  });
+  bus.on(UI_EVENTS.PERSONA_DESC_CHANGED, () => {
+    personaList.updatePreviewOnly();
+  });
+  bus.on(UI_EVENTS.PERSONA_LIST_INVALIDATED, () => {
+    personaList.update({ invalidateCache: true, autoScroll: false });
   });
 
   function mountOnce({ autoScroll = false } = {}) {
@@ -67,8 +69,10 @@ export function createAdvancedApp(rootEl) {
   }
 
   return {
+    bus,
     open({ autoScroll = false } = {}) {
       mountOnce({ autoScroll });
+      bus.emit(UI_EVENTS.UI_OPEN, { autoScroll });
       personaList.update({ invalidateCache: false, autoScroll });
       currentPersonaPanel.update();
       linksCard.update();
@@ -87,6 +91,7 @@ export function createAdvancedApp(rootEl) {
     destroy() {
       if (!mounted) return;
       mounted = false;
+      bus.emit(UI_EVENTS.UI_CLOSE, {});
       try {
         linksCard.destroy?.();
       } finally {

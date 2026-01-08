@@ -1,5 +1,15 @@
 import { el } from "./dom.js";
-import { addItem, listItems, patchItem, removeItem } from "../../store/personaStore.js";
+import {
+  addGroup,
+  addItem,
+  addItemToGroup,
+  listBlocks,
+  patchGroup,
+  patchItem,
+  removeGroup,
+  removeItem,
+} from "../../store/personaStore.js";
+import { callGenericPopup, POPUP_TYPE } from "/scripts/popup.js";
 
 function renderItem(item, { onAnyChange }) {
   const row = el("div", "pme-item");
@@ -28,7 +38,10 @@ function renderItem(item, { onAnyChange }) {
   enabledLabel.appendChild(el("span", "", "Enabled"));
   top.appendChild(enabledLabel);
 
-  const deleteBtn = el("button", "menu_button menu_button_icon pme-item-delete");
+  const deleteBtn = el(
+    "button",
+    "menu_button menu_button_icon pme-item-delete"
+  );
   deleteBtn.type = "button";
   deleteBtn.title = "Delete";
   deleteBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
@@ -38,7 +51,10 @@ function renderItem(item, { onAnyChange }) {
   });
   top.appendChild(deleteBtn);
 
-  const collapseBtn = el("button", "menu_button menu_button_icon pme-item-collapse");
+  const collapseBtn = el(
+    "button",
+    "menu_button menu_button_icon pme-item-collapse"
+  );
   collapseBtn.type = "button";
   collapseBtn.title = item.collapsed ? "Expand" : "Collapse";
   collapseBtn.innerHTML = item.collapsed
@@ -55,7 +71,9 @@ function renderItem(item, { onAnyChange }) {
   textarea.rows = 4;
   textarea.value = item.text ?? "";
   textarea.placeholder = "Text to inject when enabled...";
-  textarea.addEventListener("input", () => patchItem(item.id, { text: textarea.value }));
+  textarea.addEventListener("input", () =>
+    patchItem(item.id, { text: textarea.value })
+  );
   body.appendChild(textarea);
 
   row.appendChild(body);
@@ -70,33 +88,158 @@ function renderItem(item, { onAnyChange }) {
   return row;
 }
 
+function renderGroup(group, { onAnyChange }) {
+  const wrap = el("div", "pme-group");
+  wrap.dataset.pmeGroupId = group.id;
+
+  const top = el("div", "pme-group-top");
+
+  const titleInput = el("input", "text_pole pme-group-title");
+  titleInput.type = "text";
+  titleInput.value = group.title ?? "";
+  titleInput.placeholder = "Group title";
+  titleInput.addEventListener("input", () => {
+    patchGroup(group.id, { title: titleInput.value });
+  });
+  top.appendChild(titleInput);
+
+  const enabledLabel = el("label", "checkbox_label pme-group-enabled");
+  const enabled = el("input");
+  enabled.type = "checkbox";
+  enabled.checked = !!group.enabled;
+  enabled.addEventListener("input", () => {
+    patchGroup(group.id, { enabled: enabled.checked });
+    wrap.classList.toggle("pme-group-disabled", !enabled.checked);
+  });
+  enabledLabel.appendChild(enabled);
+  enabledLabel.appendChild(el("span", "", "Enabled"));
+  top.appendChild(enabledLabel);
+
+  const addBtn = el("button", "menu_button menu_button_icon pme-group-add");
+  addBtn.type = "button";
+  addBtn.title = "Add Item";
+  addBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
+  addBtn.addEventListener("click", () => {
+    addItemToGroup(group.id);
+    onAnyChange?.();
+  });
+  top.appendChild(addBtn);
+
+  const deleteBtn = el(
+    "button",
+    "menu_button menu_button_icon pme-group-delete"
+  );
+  deleteBtn.type = "button";
+  deleteBtn.title = "Delete Group";
+  deleteBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+  deleteBtn.addEventListener("click", () => {
+    removeGroup(group.id);
+    onAnyChange?.();
+  });
+  top.appendChild(deleteBtn);
+
+  const collapseBtn = el(
+    "button",
+    "menu_button menu_button_icon pme-group-collapse"
+  );
+  collapseBtn.type = "button";
+  collapseBtn.title = group.collapsed ? "Expand" : "Collapse";
+  collapseBtn.innerHTML = group.collapsed
+    ? '<i class="fa-solid fa-chevron-down"></i>'
+    : '<i class="fa-solid fa-chevron-up"></i>';
+  top.appendChild(collapseBtn);
+
+  wrap.appendChild(top);
+
+  const body = el("div", "pme-group-body");
+  body.classList.toggle("displayNone", !!group.collapsed);
+  wrap.appendChild(body);
+
+  const items = Array.isArray(group.items) ? group.items : [];
+  if (!items.length) {
+    body.appendChild(el("div", "text_muted", "No items in this group yet."));
+  } else {
+    for (const item of items)
+      body.appendChild(renderItem(item, { onAnyChange }));
+  }
+
+  wrap.classList.toggle("pme-group-disabled", !group.enabled);
+
+  collapseBtn.addEventListener("click", () => {
+    const nextCollapsed = !body.classList.contains("displayNone");
+    patchGroup(group.id, { collapsed: nextCollapsed });
+    onAnyChange?.();
+  });
+
+  return wrap;
+}
+
 export function createAdditionalDescriptionsCard() {
+  let collapsed = false;
+
   const root = el("div", "pme-card pme-additional");
   const header = el("div", "pme-card-title-row");
   header.appendChild(el("div", "pme-card-title", "Additional Descriptions"));
 
   const actions = el("div", "pme-actions");
+
+  const collapseBtn = el("button", "menu_button menu_button_icon");
+  collapseBtn.type = "button";
+  collapseBtn.title = "Collapse";
+  collapseBtn.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+  actions.appendChild(collapseBtn);
+
+  const fullscreenBtn = el("button", "menu_button menu_button_icon");
+  fullscreenBtn.type = "button";
+  fullscreenBtn.title = "Open fullscreen";
+  fullscreenBtn.innerHTML =
+    '<i class="fa-solid fa-up-right-and-down-left-from-center"></i>';
+  actions.appendChild(fullscreenBtn);
+
   const addBtn = el("button", "menu_button menu_button_icon pme-add-btn");
   addBtn.type = "button";
-  addBtn.title = "Add";
+  addBtn.title = "Add Item";
   addBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
   actions.appendChild(addBtn);
+
+  const addGroupBtn = el(
+    "button",
+    "menu_button menu_button_icon pme-add-group-btn"
+  );
+  addGroupBtn.type = "button";
+  addGroupBtn.title = "Add Group";
+  addGroupBtn.innerHTML = '<i class="fa-solid fa-folder-plus"></i>';
+  actions.appendChild(addGroupBtn);
+
   header.appendChild(actions);
   root.appendChild(header);
 
+  const body = el("div", "pme-additional-body");
+  root.appendChild(body);
+
   const list = el("div", "pme-add-list");
-  root.appendChild(list);
+  body.appendChild(list);
 
   function render() {
     list.innerHTML = "";
-    const items = listItems();
-    if (!items.length) {
+    const blocks = listBlocks();
+    if (!blocks?.length) {
       list.appendChild(
-        el("div", "text_muted", "No additional descriptions yet. Click + to add one.")
+        el(
+          "div",
+          "text_muted",
+          "No additional descriptions yet. Click + to add an item or G+ to add a group."
+        )
       );
       return;
     }
-    for (const item of items) list.appendChild(renderItem(item, { onAnyChange: render }));
+    for (const block of blocks) {
+      if (block.type === "item") {
+        list.appendChild(renderItem(block, { onAnyChange: render }));
+      } else if (block.type === "group") {
+        list.appendChild(renderGroup(block, { onAnyChange: render }));
+      }
+    }
   }
 
   addBtn.addEventListener("click", () => {
@@ -104,14 +247,102 @@ export function createAdditionalDescriptionsCard() {
     render();
   });
 
+  addGroupBtn.addEventListener("click", () => {
+    addGroup();
+    render();
+  });
+
+  function syncCollapsed() {
+    body.classList.toggle("displayNone", collapsed);
+    collapseBtn.title = collapsed ? "Expand" : "Collapse";
+    collapseBtn.innerHTML = collapsed
+      ? '<i class="fa-solid fa-chevron-down"></i>'
+      : '<i class="fa-solid fa-chevron-up"></i>';
+  }
+
+  collapseBtn.addEventListener("click", () => {
+    collapsed = !collapsed;
+    syncCollapsed();
+  });
+
+  fullscreenBtn.addEventListener("click", async () => {
+    // Create a fresh editor instance for the popup
+    const wrapper = el("div", "pme-additional-fullscreen");
+    wrapper.appendChild(el("div", "pme-card-title", "Additional Descriptions"));
+
+    const editor = el("div", "pme-add-list");
+    wrapper.appendChild(editor);
+
+    const renderPopup = () => {
+      editor.innerHTML = "";
+      const blocks = listBlocks();
+      if (!blocks?.length) {
+        editor.appendChild(
+          el(
+            "div",
+            "text_muted",
+            "No additional descriptions yet. Click + to add an item or G+ to add a group."
+          )
+        );
+        return;
+      }
+      for (const block of blocks) {
+        if (block.type === "item") {
+          editor.appendChild(renderItem(block, { onAnyChange: renderPopup }));
+        } else if (block.type === "group") {
+          editor.appendChild(renderGroup(block, { onAnyChange: renderPopup }));
+        }
+      }
+    };
+
+    const popupActions = el("div", "pme-actions");
+    const addItemBtn2 = el(
+      "button",
+      "menu_button menu_button_icon pme-add-btn"
+    );
+    addItemBtn2.type = "button";
+    addItemBtn2.title = "Add Item";
+    addItemBtn2.innerHTML = '<i class="fa-solid fa-plus"></i>';
+    addItemBtn2.addEventListener("click", () => {
+      addItem();
+      renderPopup();
+      render();
+    });
+    popupActions.appendChild(addItemBtn2);
+
+    const addGroupBtn2 = el(
+      "button",
+      "menu_button menu_button_icon pme-add-group-btn"
+    );
+    addGroupBtn2.type = "button";
+    addGroupBtn2.title = "Add Group";
+    addGroupBtn2.innerHTML = '<i class="fa-solid fa-folder-plus"></i>';
+    addGroupBtn2.addEventListener("click", () => {
+      addGroup();
+      renderPopup();
+      render();
+    });
+    popupActions.appendChild(addGroupBtn2);
+
+    wrapper.insertBefore(popupActions, editor);
+    renderPopup();
+
+    await callGenericPopup(wrapper, POPUP_TYPE.TEXT, "", {
+      wide: true,
+      large: true,
+      allowVerticalScrolling: true,
+    });
+  });
+
   return {
     el: root,
     mount() {
       render();
+      syncCollapsed();
     },
     update() {
       render();
+      syncCollapsed();
     },
   };
 }
-

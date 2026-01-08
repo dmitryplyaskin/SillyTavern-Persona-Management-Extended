@@ -329,8 +329,27 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 45%;
   flex: 0 1 auto;
+  min-width: 0;
+}
+
+.pme-persona-badges {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  max-width: 55%;
+  flex: 0 1 auto;
+}
+
+.pme-persona-lorebook {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  color: #1f7a3b; /* dark green */
+  opacity: 0.95;
 }
 
 .pme-persona-desc {
@@ -349,6 +368,49 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.pme-additional-body {
+  width: 100%;
+}
+
+.pme-group {
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pme-group-disabled {
+  opacity: 0.7;
+}
+
+.pme-group-top {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.pme-group-title {
+  min-width: 160px;
+}
+
+.pme-group-enabled {
+  margin: 0;
+}
+
+.pme-group-body {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pme-additional-fullscreen .pme-add-list {
+  max-height: 80vh;
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .pme-item {

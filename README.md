@@ -15,6 +15,13 @@
 Пользователь управляет **группами и блоками “Additional Descriptions”**, включением/выключением, привязками к чату/персонажу.  
 Расширение **собирает итоговый persona prompt** и **инжектит его только на время генерации**, не “портя” поле `#persona_description` и не создавая дубли.
 
+Дополнительно:
+- Advanced UI переведён на архитектуру **mount один раз → update точечно** (без постоянного полного ререндера).
+- В Advanced UI перенесены штатные блоки **Connections & Global Settings** (перемещаем реальные DOM-ноды ST, чтобы не ломать обработчики).
+- Additional Descriptions реализованы как **упорядоченные blocks[]** (item/group) — порядок важен для будущей сборки промпта.
+
+См. отдельный гайд по UI/рендеру: `UI_RENDER_GUIDE.md`.
+
 ---
 
 ## 1) Главные цели
@@ -195,31 +202,21 @@
 
 Namespace: `pme` (пример)
 
-### 8.1 Персона-уровень
+### 8.1 Персона-уровень (актуально)
 
 `power_user.persona_descriptions[avatarId].pme`:
 
-- `version: number` — версия схемы данных.
-- `groups: Group[]`
-- `items: Item[]` _(или items внутри groups — на выбор)_
-- `ui: { ... }` _(не обязательно, можно в extension_settings)_
+- `version: number`
+- `blocks: Block[]`
 
-`Group`:
+`Block` бывает двух типов:
 
-- `id: string`
-- `title: string`
-- `enabled: boolean`
-- `order: number`
-- `items: Item[]`
+- `type: "item"`: `{ id, title, text, enabled, collapsed }`
+- `type: "group"`: `{ id, title, enabled, collapsed, items: Item[] }`
 
-`Item`:
+Где `Item` = `{ id, title, text, enabled, collapsed }`.
 
-- `id: string`
-- `title: string`
-- `text: string`
-- `enabled: boolean`
-- `order: number`
-- `tags?: string[]` _(опционально для будущих фильтров)_
+Ключевой инвариант: **порядок `blocks[]` — это канонический порядок**, его нельзя автоматически сортировать, потому что он будет влиять на сборку итогового persona prompt (и позже появится ручной reorder).
 
 ### 8.2 Чат-уровень (override)
 
@@ -297,16 +294,21 @@ Namespace: `pme` (пример)
 
 ## 11) Структура файлов расширения (как мы будем раскладывать код)
 
-Текущее расширение пока пустое, но планируем так:
+Актуальная структура:
 
-- `index.js` — точка входа: инициализация, подписки на события, переключение режимов.
-- `style.css` — стили advanced UI (без конфликта со штатными, через namespace-класс на root).
-- `src/ui/*` — построение DOM, рендер, обработчики UI.
-- `src/store/*` — чтение/запись `pme` в persona/chat/global, миграции схем.
-- `src/engine/*` — сборка финального текста, применение override’ов.
-- `src/injector/*` — hook на генерацию + откат.
-
-_(Файлов ещё нет — это план раскладки.)_
+- `index.js` — entrypoint: подписки на события ST, инициализация UI.
+- `style.css` — стили Advanced UI (namespace `.pme-*`).
+- `src/ui/personaManagementTab.js` — оркестратор режимов Normal/Advanced и lifecycle UI.
+- `src/ui/advancedApp.js` — сборка Advanced UI и подключение компонентов.
+- `src/ui/uiBus.js` — мини pub/sub (события UI) для декуплинга компонентов.
+- `src/ui/components/*`:
+  - `personaList.js` — список персон (поиск/сорт/скролл + badge Lorebook),
+  - `currentPersonaPanel.js` — текущая персона (описание/position/depth/role + поддержка Expand),
+  - `personaLinksGlobalSettings.js` — Connections & Global Settings (перенос нативных DOM-ноды ST),
+  - `additionalDescriptions.js` — Additional Descriptions (blocks item/group, коллапс, fullscreen modal),
+  - `dom.js` — DOM helpers.
+- `src/store/personaStore.js` — persona-scoped persist для `pme` (blocks[]).
+- `src/injector.js` — placeholder generate interceptor (пока no-op).
 
 ---
 
@@ -315,6 +317,8 @@ _(Файлов ещё нет — это план раскладки.)_
 - Мы используем внутренние id/модули ST (`/scripts/personas.js`, `#persona-management-block` и т.п.).  
   При обновлениях ST возможны поломки — поэтому **держим интеграцию поверхностной** (hide/show) и избегаем глубоких патчей.
 - Данные в `power_user.persona_descriptions[avatarId].pme` должны быть версионированы (`version`) и мигрируемы.
+
+Примечание: сейчас проект в активной разработке, поэтому мы держим схему простой. Когда начнётся стабильное использование — добавим миграции.
 
 ---
 

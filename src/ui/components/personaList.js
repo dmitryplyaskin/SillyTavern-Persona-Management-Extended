@@ -1,8 +1,13 @@
-import { getUserAvatars, setUserAvatar, user_avatar } from "/scripts/personas.js";
+import {
+  getUserAvatars,
+  setUserAvatar,
+  user_avatar,
+} from "/scripts/personas.js";
 import { getThumbnailUrl } from "/script.js";
 
 import { getPersonaSortMode, setPersonaSortMode } from "../../core/mode.js";
 import { el } from "./dom.js";
+import { UI_EVENTS } from "../uiBus.js";
 
 /**
  * @param {string} avatarId
@@ -32,7 +37,34 @@ function getPersonaDescriptionPreview(power_user, avatarId) {
   return text.length > 120 ? `${text.slice(0, 120)}…` : text;
 }
 
-export function createPersonaList({ getPowerUser, onPersonaChanged }) {
+/**
+ * @param {any} power_user
+ * @param {string} avatarId
+ */
+function getDescriptionLength(power_user, avatarId) {
+  const raw = power_user?.persona_descriptions?.[avatarId]?.description ?? "";
+  return String(raw ?? "").trim().length;
+}
+
+/**
+ * @param {any} power_user
+ * @param {string} avatarId
+ */
+function getConnectionsCount(power_user, avatarId) {
+  const conns = power_user?.persona_descriptions?.[avatarId]?.connections;
+  return Array.isArray(conns) ? conns.length : 0;
+}
+
+/**
+ * @param {any} power_user
+ * @param {string} avatarId
+ */
+function hasLorebook(power_user, avatarId) {
+  const raw = power_user?.persona_descriptions?.[avatarId]?.lorebook ?? "";
+  return !!String(raw ?? "").trim();
+}
+
+export function createPersonaList({ getPowerUser, bus }) {
   /** @type {string[]|null} */
   let personasCache = null;
   /** @type {Promise<string[]>|null} */
@@ -73,6 +105,12 @@ export function createPersonaList({ getPowerUser, onPersonaChanged }) {
     <option value="name_desc">Z-A</option>
     <option value="id_asc">ID ↑</option>
     <option value="id_desc">ID ↓</option>
+    <option value="desc_len_asc">Description length ↑</option>
+    <option value="desc_len_desc">Description length ↓</option>
+    <option value="connections_asc">Connections ↑</option>
+    <option value="connections_desc">Connections ↓</option>
+    <option value="lorebook_first">Lorebook first</option>
+    <option value="lorebook_last">Lorebook last</option>
   `;
   controls.appendChild(search);
   controls.appendChild(sort);
@@ -100,7 +138,9 @@ export function createPersonaList({ getPowerUser, onPersonaChanged }) {
     const preserveScroll = scrollTop;
     const power = getPowerUser();
     const personas = await loadPersonas();
-    const q = String(query ?? "").trim().toLowerCase();
+    const q = String(query ?? "")
+      .trim()
+      .toLowerCase();
 
     const filtered = q
       ? personas.filter((id) => {
@@ -118,13 +158,65 @@ export function createPersonaList({ getPowerUser, onPersonaChanged }) {
     const sorted = [...filtered].sort((a, b) => {
       switch (sortMode) {
         case "name_asc":
-          return getPersonaName(power, a).localeCompare(getPersonaName(power, b));
+          return getPersonaName(power, a).localeCompare(
+            getPersonaName(power, b)
+          );
         case "name_desc":
-          return getPersonaName(power, b).localeCompare(getPersonaName(power, a));
+          return getPersonaName(power, b).localeCompare(
+            getPersonaName(power, a)
+          );
         case "id_asc":
           return String(a).localeCompare(String(b));
         case "id_desc":
           return String(b).localeCompare(String(a));
+        case "desc_len_asc": {
+          const d =
+            getDescriptionLength(power, a) - getDescriptionLength(power, b);
+          if (d !== 0) return d;
+          return getPersonaName(power, a).localeCompare(
+            getPersonaName(power, b)
+          );
+        }
+        case "desc_len_desc": {
+          const d =
+            getDescriptionLength(power, b) - getDescriptionLength(power, a);
+          if (d !== 0) return d;
+          return getPersonaName(power, a).localeCompare(
+            getPersonaName(power, b)
+          );
+        }
+        case "connections_asc": {
+          const d =
+            getConnectionsCount(power, a) - getConnectionsCount(power, b);
+          if (d !== 0) return d;
+          return getPersonaName(power, a).localeCompare(
+            getPersonaName(power, b)
+          );
+        }
+        case "connections_desc": {
+          const d =
+            getConnectionsCount(power, b) - getConnectionsCount(power, a);
+          if (d !== 0) return d;
+          return getPersonaName(power, a).localeCompare(
+            getPersonaName(power, b)
+          );
+        }
+        case "lorebook_first": {
+          const d =
+            Number(hasLorebook(power, b)) - Number(hasLorebook(power, a));
+          if (d !== 0) return d;
+          return getPersonaName(power, a).localeCompare(
+            getPersonaName(power, b)
+          );
+        }
+        case "lorebook_last": {
+          const d =
+            Number(hasLorebook(power, a)) - Number(hasLorebook(power, b));
+          if (d !== 0) return d;
+          return getPersonaName(power, a).localeCompare(
+            getPersonaName(power, b)
+          );
+        }
         default:
           return 0;
       }
@@ -152,10 +244,19 @@ export function createPersonaList({ getPowerUser, onPersonaChanged }) {
       const meta = el("div", "pme-persona-meta");
       const nameRow = el("div", "pme-persona-name-row");
       nameRow.appendChild(
-        el("div", "pme-persona-name", getPersonaName(power, id) || "[Unnamed Persona]")
+        el(
+          "div",
+          "pme-persona-name",
+          getPersonaName(power, id) || "[Unnamed Persona]"
+        )
       );
+      const rightMeta = el("div", "pme-persona-badges");
       const title = getPersonaTitle(power, id);
-      nameRow.appendChild(el("div", "pme-persona-title", title || ""));
+      rightMeta.appendChild(el("div", "pme-persona-title", title || ""));
+      if (hasLorebook(power, id)) {
+        rightMeta.appendChild(el("div", "pme-persona-lorebook", "Lorebook"));
+      }
+      nameRow.appendChild(rightMeta);
       meta.appendChild(nameRow);
 
       const preview = getPersonaDescriptionPreview(power, id);
@@ -168,7 +269,8 @@ export function createPersonaList({ getPowerUser, onPersonaChanged }) {
 
     if (autoScroll) {
       const active = listEl.querySelector(".pme-persona.is_active");
-      if (active instanceof HTMLElement) active.scrollIntoView({ block: "nearest" });
+      if (active instanceof HTMLElement)
+        active.scrollIntoView({ block: "nearest" });
       scrollTop = listEl.scrollTop;
     } else {
       listEl.scrollTop = preserveScroll;
@@ -176,7 +278,10 @@ export function createPersonaList({ getPowerUser, onPersonaChanged }) {
     }
   }
 
-  function scheduleRefresh({ invalidateCache = true, autoScroll = false } = {}) {
+  function scheduleRefresh({
+    invalidateCache = true,
+    autoScroll = false,
+  } = {}) {
     autoScrollNext ||= autoScroll;
     if (invalidateCache) personasCache = null;
     if (refreshTimer) window.clearTimeout(refreshTimer);
@@ -230,10 +335,13 @@ export function createPersonaList({ getPowerUser, onPersonaChanged }) {
 
     setActiveVisual(id);
     try {
-      await setUserAvatar(id, { toastPersonaNameChange: false, navigateToCurrent: false });
+      await setUserAvatar(id, {
+        toastPersonaNameChange: false,
+        navigateToCurrent: false,
+      });
     } finally {
       scheduleRefresh({ invalidateCache: false, autoScroll: false });
-      onPersonaChanged?.();
+      bus?.emit?.(UI_EVENTS.PERSONA_CHANGED, { avatarId: id });
     }
   });
 
@@ -254,4 +362,3 @@ export function createPersonaList({ getPowerUser, onPersonaChanged }) {
     },
   };
 }
-

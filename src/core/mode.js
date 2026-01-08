@@ -16,7 +16,7 @@ export function setAdvancedModeEnabled(enabled) {
 }
 
 /**
- * @typedef {"name_asc"|"name_desc"|"id_asc"|"id_desc"} PersonaSortMode
+ * @typedef {"name_asc"|"name_desc"|"id_asc"|"id_desc"|"desc_len_asc"|"desc_len_desc"|"connections_asc"|"connections_desc"|"lorebook_first"|"lorebook_last"} PersonaSortMode
  */
 
 /**
@@ -26,7 +26,20 @@ export function getPersonaSortMode() {
   const value = String(
     accountStorage.getItem(PME.storage.personaSortKey) ?? ""
   );
-  if (["name_asc", "name_desc", "id_asc", "id_desc"].includes(value)) {
+  if (
+    [
+      "name_asc",
+      "name_desc",
+      "id_asc",
+      "id_desc",
+      "desc_len_asc",
+      "desc_len_desc",
+      "connections_asc",
+      "connections_desc",
+      "lorebook_first",
+      "lorebook_last",
+    ].includes(value)
+  ) {
     return /** @type {PersonaSortMode} */ (value);
   }
   return "name_asc";
