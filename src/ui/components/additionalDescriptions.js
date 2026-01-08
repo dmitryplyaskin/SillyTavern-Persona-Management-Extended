@@ -12,6 +12,7 @@ import {
   removeItem,
 } from "../../store/personaStore.js";
 import { callGenericPopup, POPUP_TYPE } from "/scripts/popup.js";
+import { getTokenCountAsync } from "/scripts/tokenizers.js";
 
 function makeMoveButton(title, iconClass, { disabled = false, onClick }) {
   const btn = el(
@@ -114,14 +115,60 @@ function renderItem(
   const body = el("div", "pme-item-body");
   body.classList.toggle("displayNone", !!item.collapsed);
 
-  const textarea = el("textarea", "text_pole pme-item-text");
+  const textarea = el("textarea", "text_pole textarea_compact pme-item-text");
+  const textareaId = `pme_additional_text_${String(item.id ?? "")
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+  textarea.id = textareaId;
   textarea.rows = 4;
   textarea.value = item.text ?? "";
   textarea.placeholder = "Text to inject when enabled...";
-  textarea.addEventListener("input", () =>
-    patchItem(item.id, { text: textarea.value })
-  );
+
   body.appendChild(textarea);
+
+  const footer = el("div", "pme-item-footer");
+  const maxBtn = document.createElement("i");
+  maxBtn.className = "editor_maximize fa-solid fa-maximize right_menu_button";
+  maxBtn.title = "Expand the editor";
+  maxBtn.setAttribute("data-for", textareaId);
+  footer.appendChild(maxBtn);
+
+  const tokenBox = el("div", "pme-token-box pme-item-token-box");
+  tokenBox.appendChild(el("span", "", "Tokens: "));
+  const tokenCount = el("span", "pme-token-count", "0");
+  tokenBox.appendChild(tokenCount);
+  footer.appendChild(tokenBox);
+  body.appendChild(footer);
+
+  // Token counting (debounced)
+  let tokenTimer = /** @type {number|undefined} */ (undefined);
+  const refreshTokens = () => {
+    if (tokenTimer) window.clearTimeout(tokenTimer);
+    tokenTimer = window.setTimeout(async () => {
+      try {
+        const count = await getTokenCountAsync(String(textarea.value ?? ""));
+        tokenCount.textContent = String(count);
+      } catch {
+        tokenCount.textContent = "0";
+      }
+    }, 250);
+  };
+
+  const onTextInput = () => {
+    patchItem(item.id, { text: textarea.value });
+    refreshTokens();
+  };
+  textarea.addEventListener("input", onTextInput);
+  try {
+    // ST "Expand editor" uses jQuery `.trigger('input')` on the original element.
+    // Native listener is not guaranteed to receive that trigger, so we bind both.
+    // eslint-disable-next-line no-undef
+    if (typeof $ === "function") $(textarea).on("input", onTextInput);
+  } catch {
+    // ignore
+  }
+
+  refreshTokens();
 
   row.appendChild(body);
   row.classList.toggle("pme-item-disabled", !item.enabled);

@@ -453,6 +453,17 @@
   margin-top: 8px;
 }
 
+.pme-item-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.pme-item-footer .editor_maximize {
+  cursor: pointer;
+}
+
 .pme-item-text {
   width: 100%;
   resize: vertical;
