@@ -3,6 +3,7 @@ export const PME = {
   displayName: "Persona Management Extended",
   storage: {
     advancedModeKey: "pme_advanced_mode",
+    personaSortKey: "pme_persona_sort",
   },
   dom: {
     advancedToggleId: "pme_advanced_mode_toggle",
@@ -13,4 +14,3 @@ export const PME = {
     globalKey: "pmeGenerateInterceptor",
   },
 };
-

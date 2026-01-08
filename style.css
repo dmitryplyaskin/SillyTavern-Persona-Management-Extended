@@ -10,6 +10,40 @@
   gap: 10px;
 }
 
+.pme-layout {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+/* Left column should not exceed 50% width */
+.pme-left {
+  width: 100%;
+  max-width: 50%;
+}
+
+.pme-right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (max-width: 900px) {
+  .pme-layout {
+    flex-direction: column;
+  }
+  .pme-left {
+    max-width: 100%;
+  }
+}
+
+.pme-card-compact .pme-card-body {
+  opacity: 0.85;
+  font-size: 0.95rem;
+}
+
 .pme-header {
   display: flex;
   flex-direction: column;
@@ -44,6 +78,182 @@
 
 .pme-card-body {
   opacity: 0.95;
+}
+
+.pme-card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.pme-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pme-count {
+  opacity: 0.7;
+  font-weight: 600;
+}
+
+.pme-persona-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.pme-persona-controls .pme-persona-search {
+  flex: 1 1 auto;
+  min-width: 0; /* allow shrinking without collapsing to 0px */
+  margin: 0;
+  height: 32px;
+}
+
+/* Sort dropdown (keep it compact) */
+.pme-persona-sort {
+  flex: 0 0 120px; /* fixed width so it doesn't crush the input */
+  width: 120px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+/* Additional Descriptions block */
+.pme-additional {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .pme-additional {
+    max-width: 100%;
+  }
+}
+
+.pme-persona-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 520px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.pme-persona {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+}
+
+.pme-persona:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.pme-persona.is_active {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.pme-persona-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: 0 0 auto;
+}
+
+.pme-persona-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pme-persona-name-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pme-persona-name {
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pme-persona-title {
+  opacity: 0.7;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 45%;
+  flex: 0 1 auto;
+}
+
+.pme-persona-desc {
+  opacity: 0.75;
+  font-size: 0.9rem;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.pme-add-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pme-item {
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pme-item-disabled {
+  opacity: 0.7;
+}
+
+.pme-item-top {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.pme-item-title {
+  min-width: 140px;
+}
+
+.pme-item-enabled {
+  margin: 0;
+}
+
+.pme-item-body {
+  margin-top: 8px;
+}
+
+.pme-item-text {
+  width: 100%;
+  resize: vertical;
 }
 
 .pme-list {
