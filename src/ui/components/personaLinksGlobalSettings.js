@@ -18,6 +18,13 @@ function ensureRelocatedNativeState() {
   return relocatedNative;
 }
 
+function isHeadingEl(node) {
+  return (
+    node instanceof HTMLElement &&
+    /^H[1-6]$/.test(String(node.tagName ?? "").toUpperCase())
+  );
+}
+
 function collectNativeRelocatableNodes() {
   /** @type {HTMLElement[]} */
   const nodes = [];
@@ -35,7 +42,14 @@ function collectNativeRelocatableNodes() {
   if (list instanceof HTMLElement) nodes.push(list);
 
   const global = document.querySelector(".persona_management_global_settings");
-  if (global instanceof HTMLElement) nodes.push(global);
+  if (global instanceof HTMLElement) {
+    // Do NOT relocate the native "Global Settings" header.
+    // We'll render our own header inside the PME card to keep UI consistent.
+    for (const child of Array.from(global.children)) {
+      if (isHeadingEl(child)) continue;
+      nodes.push(child);
+    }
+  }
 
   return nodes;
 }
@@ -94,6 +108,27 @@ export function createPersonaLinksGlobalSettingsCard({ bus } = {}) {
   const body = el("div", "pme-links-body");
   root.appendChild(body);
 
+  const globalHeader = document.createElement("h4");
+  globalHeader.textContent = "Global Settings";
+  globalHeader.setAttribute("data-i18n", "Global Settings");
+
+  function ensureGlobalHeaderPlacement() {
+    // Place "Global Settings" header before the first global settings control.
+    const anchor = body
+      .querySelector("#persona_show_notifications")
+      ?.closest?.(".range-block");
+    if (!(anchor instanceof HTMLElement)) return;
+
+    if (globalHeader.parentNode !== body) {
+      body.insertBefore(globalHeader, anchor);
+      return;
+    }
+
+    if (globalHeader.nextSibling !== anchor) {
+      body.insertBefore(globalHeader, anchor);
+    }
+  }
+
   function syncCollapsedUI() {
     collapseBtn.title = collapsed ? "Expand" : "Collapse";
     collapseBtn.innerHTML = collapsed
@@ -120,11 +155,13 @@ export function createPersonaLinksGlobalSettingsCard({ bus } = {}) {
     mount() {
       // Always relocate once; hidden state controls visibility
       relocateNativeBlocks(body);
+      ensureGlobalHeaderPlacement();
       syncCollapsedUI();
     },
     update() {
       // If ST re-rendered its internal bits, re-attach them into our body (no-op otherwise)
       relocateNativeBlocks(body);
+      ensureGlobalHeaderPlacement();
       syncCollapsedUI();
     },
     destroy() {
