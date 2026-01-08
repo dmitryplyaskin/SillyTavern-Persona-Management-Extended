@@ -27,12 +27,42 @@ function getPersonaTitle(power_user, avatarId) {
 }
 
 /**
+ * Returns persona descriptor for an avatar id (raw object stored by ST).
+ * @param {any} power_user
+ * @param {string} avatarId
+ */
+function getPersonaDescriptor(power_user, avatarId) {
+  return power_user?.persona_descriptions?.[avatarId];
+}
+
+/**
+ * Default is linked (legacy behavior). Only explicit `false` means unlinked.
+ * @param {any} descObj
+ */
+function isLinkedToNative(descObj) {
+  return descObj?.pme?.linkedToNative !== false;
+}
+
+/**
+ * @param {any} power_user
+ * @param {string} avatarId
+ */
+function getEffectiveDescription(power_user, avatarId) {
+  const descObj = getPersonaDescriptor(power_user, avatarId);
+  if (!isLinkedToNative(descObj)) {
+    return String(descObj?.pme?.local?.description ?? "");
+  }
+  return String(descObj?.description ?? "");
+}
+
+/**
  * @param {string} avatarId
  * @param {any} power_user
  */
 function getPersonaDescriptionPreview(power_user, avatarId) {
-  const raw = power_user?.persona_descriptions?.[avatarId]?.description ?? "";
-  const text = String(raw).trim().replaceAll("\n", " ");
+  const text = getEffectiveDescription(power_user, avatarId)
+    .trim()
+    .replaceAll("\n", " ");
   if (!text) return "";
   return text.length > 120 ? `${text.slice(0, 120)}…` : text;
 }
@@ -42,8 +72,7 @@ function getPersonaDescriptionPreview(power_user, avatarId) {
  * @param {string} avatarId
  */
 function getDescriptionLength(power_user, avatarId) {
-  const raw = power_user?.persona_descriptions?.[avatarId]?.description ?? "";
-  return String(raw ?? "").trim().length;
+  return getEffectiveDescription(power_user, avatarId).trim().length;
 }
 
 /**

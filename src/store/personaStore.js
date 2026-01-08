@@ -225,6 +225,44 @@ export function addItemToGroup(groupId) {
 }
 
 /**
+ * Move a top-level block (item or group) by delta (-1 up, +1 down).
+ * @param {string} id
+ * @param {number} delta
+ */
+export function moveBlock(id, delta) {
+  const data = getPmeData();
+  const idx = data.blocks.findIndex((b) => String(b?.id) === String(id));
+  if (idx === -1) return;
+  const next = idx + (delta < 0 ? -1 : 1);
+  if (next < 0 || next >= data.blocks.length) return;
+  const tmp = data.blocks[idx];
+  data.blocks[idx] = data.blocks[next];
+  data.blocks[next] = tmp;
+  savePmeData();
+}
+
+/**
+ * Move an item within a group by delta (-1 up, +1 down).
+ * @param {string} groupId
+ * @param {string} itemId
+ * @param {number} delta
+ */
+export function moveItemInGroup(groupId, itemId, delta) {
+  const data = getPmeData();
+  const group = data.blocks.find((b) => b.type === "group" && b.id === groupId);
+  if (!group || group.type !== "group") return;
+  group.items ??= [];
+  const idx = group.items.findIndex((it) => String(it?.id) === String(itemId));
+  if (idx === -1) return;
+  const next = idx + (delta < 0 ? -1 : 1);
+  if (next < 0 || next >= group.items.length) return;
+  const tmp = group.items[idx];
+  group.items[idx] = group.items[next];
+  group.items[next] = tmp;
+  savePmeData();
+}
+
+/**
  * Convenience for UI
  */
 export function getCurrentPersonaMeta() {

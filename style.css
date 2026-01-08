@@ -240,6 +240,7 @@
   width: 120px;
   height: 32px;
   border-radius: 8px;
+  margin-bottom: 0px;
 }
 
 /* Additional Descriptions block */
@@ -387,7 +388,7 @@
 
 .pme-group-top {
   display: grid;
-  grid-template-columns: 1fr auto auto auto auto;
+  grid-template-columns: 1fr auto auto auto auto auto auto;
   gap: 8px;
   align-items: center;
 }
@@ -426,9 +427,14 @@
 
 .pme-item-top {
   display: grid;
-  grid-template-columns: 1fr auto auto auto;
+  grid-template-columns: 1fr auto auto auto auto auto;
   gap: 8px;
   align-items: center;
+}
+
+.pme-move-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .pme-item-title {

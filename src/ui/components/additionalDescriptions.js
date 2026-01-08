@@ -4,6 +4,8 @@ import {
   addItem,
   addItemToGroup,
   listBlocks,
+  moveBlock,
+  moveItemInGroup,
   patchGroup,
   patchItem,
   removeGroup,
@@ -11,7 +13,31 @@ import {
 } from "../../store/personaStore.js";
 import { callGenericPopup, POPUP_TYPE } from "/scripts/popup.js";
 
-function renderItem(item, { onAnyChange }) {
+function makeMoveButton(title, iconClass, { disabled = false, onClick }) {
+  const btn = el("button", "menu_button menu_button_icon pme-move-btn");
+  btn.type = "button";
+  btn.title = title;
+  btn.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
+  btn.disabled = !!disabled;
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (btn.disabled) return;
+    onClick?.();
+  });
+  return btn;
+}
+
+function renderItem(
+  item,
+  {
+    onAnyChange,
+    canMoveUp = false,
+    canMoveDown = false,
+    onMoveUp,
+    onMoveDown,
+  } = {}
+) {
   const row = el("div", "pme-item");
   row.dataset.pmeItemId = item.id;
 
@@ -37,6 +63,24 @@ function renderItem(item, { onAnyChange }) {
   enabledLabel.appendChild(enabled);
   enabledLabel.appendChild(el("span", "", "Enabled"));
   top.appendChild(enabledLabel);
+
+  const moveUpBtn = makeMoveButton("Move up", "fa-arrow-up", {
+    disabled: !canMoveUp,
+    onClick: () => {
+      onMoveUp?.();
+      onAnyChange?.();
+    },
+  });
+  top.appendChild(moveUpBtn);
+
+  const moveDownBtn = makeMoveButton("Move down", "fa-arrow-down", {
+    disabled: !canMoveDown,
+    onClick: () => {
+      onMoveDown?.();
+      onAnyChange?.();
+    },
+  });
+  top.appendChild(moveDownBtn);
 
   const deleteBtn = el(
     "button",
@@ -88,7 +132,16 @@ function renderItem(item, { onAnyChange }) {
   return row;
 }
 
-function renderGroup(group, { onAnyChange }) {
+function renderGroup(
+  group,
+  {
+    onAnyChange,
+    canMoveUp = false,
+    canMoveDown = false,
+    onMoveUp,
+    onMoveDown,
+  } = {}
+) {
   const wrap = el("div", "pme-group");
   wrap.dataset.pmeGroupId = group.id;
 
@@ -114,6 +167,24 @@ function renderGroup(group, { onAnyChange }) {
   enabledLabel.appendChild(enabled);
   enabledLabel.appendChild(el("span", "", "Enabled"));
   top.appendChild(enabledLabel);
+
+  const moveUpBtn = makeMoveButton("Move group up", "fa-arrow-up", {
+    disabled: !canMoveUp,
+    onClick: () => {
+      onMoveUp?.();
+      onAnyChange?.();
+    },
+  });
+  top.appendChild(moveUpBtn);
+
+  const moveDownBtn = makeMoveButton("Move group down", "fa-arrow-down", {
+    disabled: !canMoveDown,
+    onClick: () => {
+      onMoveDown?.();
+      onAnyChange?.();
+    },
+  });
+  top.appendChild(moveDownBtn);
 
   const addBtn = el("button", "menu_button menu_button_icon pme-group-add");
   addBtn.type = "button";
@@ -159,8 +230,18 @@ function renderGroup(group, { onAnyChange }) {
   if (!items.length) {
     body.appendChild(el("div", "text_muted", "No items in this group yet."));
   } else {
-    for (const item of items)
-      body.appendChild(renderItem(item, { onAnyChange }));
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      body.appendChild(
+        renderItem(item, {
+          onAnyChange,
+          canMoveUp: i > 0,
+          canMoveDown: i < items.length - 1,
+          onMoveUp: () => moveItemInGroup(group.id, item.id, -1),
+          onMoveDown: () => moveItemInGroup(group.id, item.id, +1),
+        })
+      );
+    }
   }
 
   wrap.classList.toggle("pme-group-disabled", !group.enabled);
@@ -233,11 +314,30 @@ export function createAdditionalDescriptionsCard() {
       );
       return;
     }
-    for (const block of blocks) {
+    for (let i = 0; i < blocks.length; i++) {
+      const block = blocks[i];
+      const canMoveUp = i > 0;
+      const canMoveDown = i < blocks.length - 1;
       if (block.type === "item") {
-        list.appendChild(renderItem(block, { onAnyChange: render }));
+        list.appendChild(
+          renderItem(block, {
+            onAnyChange: render,
+            canMoveUp,
+            canMoveDown,
+            onMoveUp: () => moveBlock(block.id, -1),
+            onMoveDown: () => moveBlock(block.id, +1),
+          })
+        );
       } else if (block.type === "group") {
-        list.appendChild(renderGroup(block, { onAnyChange: render }));
+        list.appendChild(
+          renderGroup(block, {
+            onAnyChange: render,
+            canMoveUp,
+            canMoveDown,
+            onMoveUp: () => moveBlock(block.id, -1),
+            onMoveDown: () => moveBlock(block.id, +1),
+          })
+        );
       }
     }
   }
@@ -286,11 +386,36 @@ export function createAdditionalDescriptionsCard() {
         );
         return;
       }
-      for (const block of blocks) {
+      for (let i = 0; i < blocks.length; i++) {
+        const block = blocks[i];
+        const canMoveUp = i > 0;
+        const canMoveDown = i < blocks.length - 1;
         if (block.type === "item") {
-          editor.appendChild(renderItem(block, { onAnyChange: renderPopup }));
+          editor.appendChild(
+            renderItem(block, {
+              onAnyChange: () => {
+                renderPopup();
+                render();
+              },
+              canMoveUp,
+              canMoveDown,
+              onMoveUp: () => moveBlock(block.id, -1),
+              onMoveDown: () => moveBlock(block.id, +1),
+            })
+          );
         } else if (block.type === "group") {
-          editor.appendChild(renderGroup(block, { onAnyChange: renderPopup }));
+          editor.appendChild(
+            renderGroup(block, {
+              onAnyChange: () => {
+                renderPopup();
+                render();
+              },
+              canMoveUp,
+              canMoveDown,
+              onMoveUp: () => moveBlock(block.id, -1),
+              onMoveDown: () => moveBlock(block.id, +1),
+            })
+          );
         }
       }
     };

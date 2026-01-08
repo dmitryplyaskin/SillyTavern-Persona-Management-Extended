@@ -20,9 +20,6 @@ export function createAdvancedApp(rootEl) {
   const bus = createUiBus();
 
   const panel = el("div", "pme-panel");
-  const header = el("div", "pme-header");
-  header.appendChild(el("div", "pme-title", "Persona Management Extended"));
-  panel.appendChild(header);
 
   const layout = el("div", "pme-layout");
   const left = el("div", "pme-left");
@@ -31,12 +28,18 @@ export function createAdvancedApp(rootEl) {
   layout.appendChild(right);
   panel.appendChild(layout);
 
-  const currentPersonaPanel = createCurrentPersonaPanel({ getPersonaName, bus });
+  const currentPersonaPanel = createCurrentPersonaPanel({
+    getPersonaName,
+    bus,
+  });
 
   const linksCard = createPersonaLinksGlobalSettingsCard({ bus });
   const additionalCard = createAdditionalDescriptionsCard();
 
-  const personaList = createPersonaList({ getPowerUser: () => power_user, bus });
+  const personaList = createPersonaList({
+    getPowerUser: () => power_user,
+    bus,
+  });
 
   // Wire updates via bus (decoupled)
   bus.on(UI_EVENTS.PERSONA_CHANGED, () => {
@@ -101,4 +104,3 @@ export function createAdvancedApp(rootEl) {
     },
   };
 }
-
