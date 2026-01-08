@@ -103,6 +103,7 @@ export function createAdvancedApp(rootEl) {
       mounted = false;
       bus.emit(UI_EVENTS.UI_CLOSE, {});
       try {
+        personaList.destroy?.();
         linksCard.destroy?.();
       } finally {
         restoreNativePersonaLinksBlocks();

@@ -114,6 +114,11 @@ export function createPersonaList({ getPowerUser, bus }) {
   header.appendChild(titleWrap);
 
   const actions = el("div", "pme-actions");
+  let nativeCreateBtn = /** @type {HTMLElement|null} */ (null);
+  let nativeCreateRestore = /** @type {{ parent: HTMLElement, nextSibling: ChildNode|null } | null} */ (
+    null
+  );
+
   const refreshBtn = el("button", "menu_button menu_button_icon pme-icon-btn");
   refreshBtn.type = "button";
   refreshBtn.title = "Refresh list";
@@ -121,6 +126,44 @@ export function createPersonaList({ getPowerUser, bus }) {
   actions.appendChild(refreshBtn);
   header.appendChild(actions);
   root.appendChild(header);
+
+  function attachNativeCreateButton() {
+    const btn = document.getElementById("create_dummy_persona");
+    if (!(btn instanceof HTMLElement)) return;
+
+    // Cache original location once so we can restore it on destroy().
+    if (!nativeCreateRestore) {
+      const parent = btn.parentElement;
+      if (!(parent instanceof HTMLElement)) return;
+      nativeCreateRestore = {
+        parent,
+        nextSibling: btn.nextSibling,
+      };
+    }
+
+    nativeCreateBtn = btn;
+
+    // Put Create button to the left of refresh button.
+    actions.insertBefore(btn, refreshBtn);
+  }
+
+  function restoreNativeCreateButton() {
+    if (!nativeCreateBtn || !nativeCreateRestore) return;
+    const { parent, nextSibling } = nativeCreateRestore;
+
+    // If it's already restored, do nothing.
+    if (nativeCreateBtn.parentElement === parent) return;
+
+    try {
+      if (nextSibling && nextSibling.parentNode === parent) {
+        parent.insertBefore(nativeCreateBtn, nextSibling);
+      } else {
+        parent.appendChild(nativeCreateBtn);
+      }
+    } catch {
+      // If restore fails for any reason, don't break UI teardown.
+    }
+  }
 
   const controls = el("div", "pme-persona-controls");
   const search = el("input", "text_pole pme-persona-search");
@@ -377,6 +420,7 @@ export function createPersonaList({ getPowerUser, bus }) {
   return {
     el: root,
     mount({ autoScroll = false } = {}) {
+      attachNativeCreateButton();
       search.value = query;
       sort.value = getPersonaSortMode();
       autoScrollNext = autoScroll;
@@ -388,6 +432,9 @@ export function createPersonaList({ getPowerUser, bus }) {
     updatePreviewOnly() {
       // No cache invalidation; just redraw from current power_user data.
       scheduleRefresh({ invalidateCache: false, autoScroll: false });
+    },
+    destroy() {
+      restoreNativeCreateButton();
     },
   };
 }
