@@ -1,10 +1,14 @@
 import { power_user } from "/scripts/power-user.js";
 import {
   getUserAvatars,
+  setPersonaDescription,
   setUserAvatar,
   user_avatar,
 } from "/scripts/personas.js";
-import { getThumbnailUrl } from "/script.js";
+import { getThumbnailUrl, saveSettingsDebounced } from "/script.js";
+import { getTokenCountAsync } from "/scripts/tokenizers.js";
+import { persona_description_positions } from "/scripts/power-user.js";
+import { getOrCreatePersonaDescriptor } from "/scripts/personas.js";
 
 import { PME } from "../core/constants.js";
 import {
@@ -106,6 +110,32 @@ function el(tag, className, text) {
 
 let personasCache = /** @type {string[]|null} */ (null);
 let personasLoadPromise = /** @type {Promise<string[]>|null} */ (null);
+let autoScrollToActiveNext = false;
+
+let personaListState =
+  /** @type {{listEl: HTMLElement, searchEl: HTMLInputElement, countEl: HTMLElement}|null} */ (
+    null
+  );
+
+let nativePersonaListObserver = /** @type {MutationObserver|null} */ (null);
+let refreshListTimer = /** @type {number|undefined} */ (undefined);
+
+function schedulePersonaListRefresh({ autoScroll = false } = {}) {
+  autoScrollToActiveNext ||= autoScroll;
+  if (refreshListTimer) window.clearTimeout(refreshListTimer);
+  refreshListTimer = window.setTimeout(() => {
+    refreshListTimer = undefined;
+    if (!personaListState) return;
+    personasCache = null;
+    void populatePersonaList(
+      personaListState.listEl,
+      personaListState.searchEl.value,
+      personaListState.countEl,
+      { autoScroll: autoScrollToActiveNext }
+    );
+    autoScrollToActiveNext = false;
+  }, 150);
+}
 
 async function loadPersonas() {
   if (personasCache) return personasCache;
@@ -132,22 +162,13 @@ function renderAdvancedUI(root) {
   header.appendChild(el("div", "pme-title", "Persona Management Extended"));
   panel.appendChild(header);
 
-  const { avatarId } = getCurrentPersonaMeta();
-  const personaName = getPersonaName(avatarId);
-
   const layout = el("div", "pme-layout");
   const left = el("div", "pme-left");
   const right = el("div", "pme-right");
 
   left.appendChild(renderPersonaListBlock());
 
-  const personaCard = el("div", "pme-card pme-card-compact");
-  personaCard.appendChild(el("div", "pme-card-title", "Current persona"));
-  const personaBody = el("div", "pme-card-body");
-  personaBody.appendChild(el("div", "", `Name: ${personaName}`));
-  personaBody.appendChild(el("div", "", `AvatarId: ${String(avatarId ?? "")}`));
-  personaCard.appendChild(personaBody);
-  right.appendChild(personaCard);
+  right.appendChild(renderCurrentPersonaPanel());
 
   right.appendChild(renderAdditionalDescriptionsBlock());
 
@@ -156,6 +177,254 @@ function renderAdvancedUI(root) {
   panel.appendChild(layout);
 
   root.appendChild(panel);
+}
+
+function clickNative(id) {
+  const el = document.getElementById(id);
+  if (el instanceof HTMLElement) el.click();
+}
+
+function syncNativePersonaControls() {
+  const nativeDesc = document.getElementById("persona_description");
+  if (nativeDesc instanceof HTMLTextAreaElement) {
+    nativeDesc.value = String(power_user.persona_description ?? "");
+  }
+
+  const nativePos = document.getElementById("persona_description_position");
+  if (nativePos instanceof HTMLSelectElement) {
+    nativePos.value = String(
+      Number(
+        power_user.persona_description_position ??
+          persona_description_positions.IN_PROMPT
+      )
+    );
+  }
+
+  const nativeDepth = document.getElementById("persona_depth_value");
+  if (nativeDepth instanceof HTMLInputElement) {
+    nativeDepth.value = String(
+      Number(power_user.persona_description_depth ?? 2)
+    );
+  }
+
+  const nativeRole = document.getElementById("persona_depth_role");
+  if (nativeRole instanceof HTMLSelectElement) {
+    nativeRole.value = String(Number(power_user.persona_description_role ?? 0));
+  }
+}
+
+function renderCurrentPersonaPanel() {
+  const { avatarId } = getCurrentPersonaMeta();
+  const personaName = getPersonaName(avatarId);
+
+  const card = el("div", "pme-card pme-current");
+  const header = el("div", "pme-current-top");
+
+  const title = el("div", "pme-current-title", "Current Persona");
+  header.appendChild(title);
+
+  const buttons = el("div", "pme-current-buttons");
+  buttons.appendChild(
+    makeIconButton("Rename Persona", "fa-pencil", () =>
+      clickNative("persona_rename_button")
+    )
+  );
+  buttons.appendChild(
+    makeIconButton("Click to set user name for all messages", "fa-sync", () =>
+      clickNative("sync_name_button")
+    )
+  );
+  buttons.appendChild(
+    makeIconButton("Persona Lore", "fa-globe", () =>
+      clickNative("persona_lore_button")
+    )
+  );
+  buttons.appendChild(
+    makeIconButton("Change Persona Image", "fa-image", () =>
+      clickNative("persona_set_image_button")
+    )
+  );
+  buttons.appendChild(
+    makeIconButton("Duplicate Persona", "fa-clone", () =>
+      clickNative("persona_duplicate_button")
+    )
+  );
+  buttons.appendChild(
+    makeIconButton(
+      "Delete Persona",
+      "fa-skull",
+      () => clickNative("persona_delete_button"),
+      { danger: true }
+    )
+  );
+  header.appendChild(buttons);
+  card.appendChild(header);
+
+  const nameRow = el("div", "pme-current-name-row");
+  nameRow.appendChild(
+    el("div", "pme-current-name", personaName || "[Persona Name]")
+  );
+  card.appendChild(nameRow);
+
+  // Description
+  const descHeader = el("div", "pme-section-header");
+  descHeader.appendChild(el("div", "pme-section-title", "Persona Description"));
+  const maxBtn = document.createElement("i");
+  maxBtn.className = "editor_maximize fa-solid fa-maximize right_menu_button";
+  maxBtn.title = "Expand the editor";
+  maxBtn.setAttribute("data-for", "pme_persona_description");
+  descHeader.appendChild(maxBtn);
+  card.appendChild(descHeader);
+
+  const textarea = document.createElement("textarea");
+  textarea.id = "pme_persona_description";
+  textarea.className = "text_pole textarea_compact pme-current-textarea";
+  textarea.rows = 8;
+  textarea.value = String(power_user.persona_description ?? "");
+  textarea.placeholder =
+    "Example:\n[{{user}} is a 28-year-old Romanian cat girl.]";
+  textarea.autocomplete = "off";
+  card.appendChild(textarea);
+
+  // Position + tokens
+  const posHeader = el("div", "pme-position-header");
+  posHeader.appendChild(el("div", "pme-section-title", "Position"));
+  const tokenBox = el("div", "pme-token-box");
+  tokenBox.appendChild(el("span", "", "Tokens: "));
+  const tokenCount = el("span", "pme-token-count", "0");
+  tokenBox.appendChild(tokenCount);
+  posHeader.appendChild(tokenBox);
+  card.appendChild(posHeader);
+
+  const posRow = el("div", "pme-position-row");
+  const select = document.createElement("select");
+  select.className = "pme-position-select";
+  select.innerHTML = `
+    <option value="${persona_description_positions.NONE}">None (disabled)</option>
+    <option value="${persona_description_positions.IN_PROMPT}">In Story String / Prompt Manager</option>
+    <option value="${persona_description_positions.TOP_AN}">Top of Author's Note</option>
+    <option value="${persona_description_positions.BOTTOM_AN}">Bottom of Author's Note</option>
+    <option value="${persona_description_positions.AT_DEPTH}">In-chat @ Depth</option>
+  `;
+
+  // ST uses power_user.persona_description_position
+  const currentPos = Number(
+    power_user.persona_description_position ??
+      persona_description_positions.IN_PROMPT
+  );
+  select.value = String(currentPos);
+  posRow.appendChild(select);
+
+  const depthWrap = el("div", "pme-depth-wrap");
+  const depthLabel = el("label", "pme-depth-label", "Depth:");
+  const depthInput = document.createElement("input");
+  depthInput.type = "number";
+  depthInput.min = "0";
+  depthInput.max = "9999";
+  depthInput.step = "1";
+  depthInput.className = "text_pole pme-depth-input";
+  depthInput.value = String(Number(power_user.persona_description_depth ?? 2));
+  depthLabel.appendChild(depthInput);
+  depthWrap.appendChild(depthLabel);
+
+  const roleLabel = el("label", "pme-depth-label", "Role:");
+  const roleSelect = document.createElement("select");
+  roleSelect.className = "text_pole pme-role-select";
+  roleSelect.innerHTML = `
+    <option value="0">System</option>
+    <option value="1">User</option>
+    <option value="2">Assistant</option>
+  `;
+  roleSelect.value = String(Number(power_user.persona_description_role ?? 0));
+  roleLabel.appendChild(roleSelect);
+  depthWrap.appendChild(roleLabel);
+  posRow.appendChild(depthWrap);
+
+  card.appendChild(posRow);
+
+  const updateDepthVisibility = () => {
+    const v = Number(select.value);
+    depthWrap.classList.toggle(
+      "displayNone",
+      v !== persona_description_positions.AT_DEPTH
+    );
+  };
+  updateDepthVisibility();
+
+  // Token counting (debounced)
+  let tokenTimer = /** @type {number|undefined} */ (undefined);
+  const refreshTokens = () => {
+    if (tokenTimer) window.clearTimeout(tokenTimer);
+    tokenTimer = window.setTimeout(async () => {
+      try {
+        const count = await getTokenCountAsync(String(textarea.value ?? ""));
+        tokenCount.textContent = String(count);
+      } catch {
+        tokenCount.textContent = "0";
+      }
+    }, 250);
+  };
+  refreshTokens();
+
+  // Wire inputs to ST data model
+  textarea.addEventListener("input", () => {
+    power_user.persona_description = String(textarea.value);
+    const descriptor = getOrCreatePersonaDescriptor();
+    descriptor.description = power_user.persona_description;
+    saveSettingsDebounced();
+    refreshTokens();
+
+    syncNativePersonaControls();
+  });
+
+  select.addEventListener("input", () => {
+    power_user.persona_description_position = Number(select.value);
+    const descriptor = getOrCreatePersonaDescriptor();
+    descriptor.position = power_user.persona_description_position;
+    saveSettingsDebounced();
+    updateDepthVisibility();
+
+    syncNativePersonaControls();
+  });
+
+  depthInput.addEventListener("input", () => {
+    power_user.persona_description_depth = Number(depthInput.value);
+    const descriptor = getOrCreatePersonaDescriptor();
+    descriptor.depth = power_user.persona_description_depth;
+    saveSettingsDebounced();
+
+    syncNativePersonaControls();
+  });
+
+  roleSelect.addEventListener("input", () => {
+    power_user.persona_description_role = Number(roleSelect.value);
+    const descriptor = getOrCreatePersonaDescriptor();
+    descriptor.role = power_user.persona_description_role;
+    saveSettingsDebounced();
+
+    syncNativePersonaControls();
+  });
+
+  return card;
+}
+
+function makeIconButton(title, iconClass, onClick, { danger = false } = {}) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = `menu_button menu_button_icon pme-icon-btn${
+    danger ? " pme-danger" : ""
+  }`;
+  btn.title = title;
+  btn.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onClick();
+    // Some actions (rename/image/duplicate/delete) update persona list asynchronously.
+    // Schedule list refresh to avoid manual refresh button.
+    schedulePersonaListRefresh({ autoScroll: true });
+  });
+  return btn;
 }
 
 function renderPersonaListBlock() {
@@ -187,8 +456,13 @@ function renderPersonaListBlock() {
   const search = el("input", "text_pole pme-persona-search");
   search.type = "search";
   search.placeholder = "Search...";
+  let searchTimer = /** @type {number|undefined} */ (undefined);
   search.addEventListener("input", () => {
-    void populatePersonaList(list, search.value, countEl);
+    if (searchTimer) window.clearTimeout(searchTimer);
+    searchTimer = window.setTimeout(() => {
+      searchTimer = undefined;
+      void populatePersonaList(list, search.value, countEl);
+    }, 120);
   });
 
   const sort = el("select", "pme-persona-sort");
@@ -213,6 +487,8 @@ function renderPersonaListBlock() {
   list.textContent = "Loading personas…";
   block.appendChild(list);
 
+  personaListState = { listEl: list, searchEl: search, countEl };
+
   list.addEventListener("click", async (ev) => {
     const target = ev.target instanceof HTMLElement ? ev.target : null;
     const row = target?.closest?.("[data-persona-id]");
@@ -234,15 +510,21 @@ function renderPersonaListBlock() {
         navigateToCurrent: false,
       });
     } finally {
+      schedulePersonaListRefresh({ autoScroll: true });
       refreshAdvancedUIIfVisible();
     }
   });
 
-  void populatePersonaList(list, "", countEl);
+  void populatePersonaList(list, "", countEl, { autoScroll: true });
   return block;
 }
 
-async function populatePersonaList(listEl, query, countEl) {
+async function populatePersonaList(
+  listEl,
+  query,
+  countEl,
+  { autoScroll = false } = {}
+) {
   const q = String(query ?? "")
     .trim()
     .toLowerCase();
@@ -317,6 +599,13 @@ async function populatePersonaList(listEl, query, countEl) {
     row.appendChild(img);
     row.appendChild(meta);
     listEl.appendChild(row);
+  }
+
+  if (autoScroll) {
+    const active = listEl.querySelector(".pme-persona.is_active");
+    if (active instanceof HTMLElement) {
+      active.scrollIntoView({ block: "nearest" });
+    }
   }
 }
 
@@ -448,7 +737,20 @@ export function applyMode() {
   root.classList.toggle("displayNone", !advancedEnabled);
 
   if (advancedEnabled) {
+    autoScrollToActiveNext = true;
     renderAdvancedUI(root);
+    // If list is already mounted, auto-scroll once
+    if (personaListState) {
+      schedulePersonaListRefresh({ autoScroll: true });
+    }
+  } else {
+    // When going back to Normal mode, sync native UI from power_user
+    try {
+      syncNativePersonaControls();
+      setPersonaDescription();
+    } catch {
+      // ignore
+    }
   }
 }
 
@@ -460,6 +762,22 @@ export function ensurePersonaManagementUI() {
 
   ensureAdvancedToggle();
   getOrCreateAdvancedRoot(container);
+
+  // Observe native persona list updates and mirror them
+  if (!nativePersonaListObserver) {
+    const nativeList = document.getElementById("user_avatar_block");
+    if (nativeList) {
+      nativePersonaListObserver = new MutationObserver(() => {
+        if (!getAdvancedModeEnabled()) return;
+        schedulePersonaListRefresh();
+      });
+      nativePersonaListObserver.observe(nativeList, {
+        childList: true,
+        subtree: true,
+      });
+    }
+  }
+
   applyMode();
 
   return true;

@@ -18,6 +18,16 @@ import { getOrCreatePersonaDescriptor, user_avatar } from "/scripts/personas.js"
 
 const SCHEMA_VERSION = 1;
 
+let saveTimer = /** @type {number|undefined} */ (undefined);
+
+function scheduleSave() {
+  if (saveTimer) window.clearTimeout(saveTimer);
+  saveTimer = window.setTimeout(() => {
+    saveTimer = undefined;
+    saveSettingsDebounced();
+  }, 200);
+}
+
 function makeId() {
   // Keep it short & portable (no crypto requirement)
   return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -45,7 +55,7 @@ export function getPmeData() {
 }
 
 export function savePmeData() {
-  saveSettingsDebounced();
+  scheduleSave();
 }
 
 /**
