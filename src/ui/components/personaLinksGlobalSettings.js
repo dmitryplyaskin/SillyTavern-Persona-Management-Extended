@@ -28,7 +28,8 @@ function collectNativeRelocatableNodes() {
 
   // "Connections" header is the previous element sibling of the buttons block in the native UI
   const header = buttons?.previousElementSibling;
-  if (header instanceof HTMLElement && header.tagName === "H4") nodes.push(header);
+  if (header instanceof HTMLElement && header.tagName === "H4")
+    nodes.push(header);
   if (buttons instanceof HTMLElement) nodes.push(buttons);
   if (info instanceof HTMLElement) nodes.push(info);
   if (list instanceof HTMLElement) nodes.push(list);
@@ -52,7 +53,8 @@ function relocateNativeBlocks(target) {
   for (const node of nodes) {
     if (!state.origins.has(node)) {
       const parent = node.parentNode;
-      if (parent) state.origins.set(node, { parent, nextSibling: node.nextSibling });
+      if (parent)
+        state.origins.set(node, { parent, nextSibling: node.nextSibling });
     }
     if (node.parentNode !== target) target.appendChild(node);
   }
@@ -83,7 +85,7 @@ export function createPersonaLinksGlobalSettingsCard({ bus } = {}) {
   header.appendChild(title);
 
   const actions = el("div", "pme-actions");
-  const collapseBtn = el("button", "menu_button menu_button_icon");
+  const collapseBtn = el("button", "menu_button menu_button_icon pme-icon-btn");
   collapseBtn.type = "button";
   actions.appendChild(collapseBtn);
   header.appendChild(actions);
@@ -98,6 +100,7 @@ export function createPersonaLinksGlobalSettingsCard({ bus } = {}) {
       ? '<i class="fa-solid fa-chevron-down"></i>'
       : '<i class="fa-solid fa-chevron-up"></i>';
     setHidden(body, collapsed);
+    root.classList.toggle("pme-collapsed", collapsed);
   }
 
   collapseBtn.addEventListener("click", (e) => {
@@ -129,4 +132,3 @@ export function createPersonaLinksGlobalSettingsCard({ bus } = {}) {
     },
   };
 }
-

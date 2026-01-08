@@ -14,7 +14,10 @@ import {
 import { callGenericPopup, POPUP_TYPE } from "/scripts/popup.js";
 
 function makeMoveButton(title, iconClass, { disabled = false, onClick }) {
-  const btn = el("button", "menu_button menu_button_icon pme-move-btn");
+  const btn = el(
+    "button",
+    "menu_button menu_button_icon pme-icon-btn pme-move-btn"
+  );
   btn.type = "button";
   btn.title = title;
   btn.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
@@ -84,7 +87,7 @@ function renderItem(
 
   const deleteBtn = el(
     "button",
-    "menu_button menu_button_icon pme-item-delete"
+    "menu_button menu_button_icon pme-icon-btn pme-item-delete"
   );
   deleteBtn.type = "button";
   deleteBtn.title = "Delete";
@@ -97,7 +100,7 @@ function renderItem(
 
   const collapseBtn = el(
     "button",
-    "menu_button menu_button_icon pme-item-collapse"
+    "menu_button menu_button_icon pme-icon-btn pme-item-collapse"
   );
   collapseBtn.type = "button";
   collapseBtn.title = item.collapsed ? "Expand" : "Collapse";
@@ -187,6 +190,7 @@ function renderGroup(
   top.appendChild(moveDownBtn);
 
   const addBtn = el("button", "menu_button menu_button_icon pme-group-add");
+  addBtn.classList.add("pme-icon-btn");
   addBtn.type = "button";
   addBtn.title = "Add Item";
   addBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
@@ -198,7 +202,7 @@ function renderGroup(
 
   const deleteBtn = el(
     "button",
-    "menu_button menu_button_icon pme-group-delete"
+    "menu_button menu_button_icon pme-icon-btn pme-group-delete"
   );
   deleteBtn.type = "button";
   deleteBtn.title = "Delete Group";
@@ -211,7 +215,7 @@ function renderGroup(
 
   const collapseBtn = el(
     "button",
-    "menu_button menu_button_icon pme-group-collapse"
+    "menu_button menu_button_icon pme-icon-btn pme-group-collapse"
   );
   collapseBtn.type = "button";
   collapseBtn.title = group.collapsed ? "Expand" : "Collapse";
@@ -264,20 +268,20 @@ export function createAdditionalDescriptionsCard() {
 
   const actions = el("div", "pme-actions");
 
-  const collapseBtn = el("button", "menu_button menu_button_icon");
-  collapseBtn.type = "button";
-  collapseBtn.title = "Collapse";
-  collapseBtn.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
-  actions.appendChild(collapseBtn);
-
-  const fullscreenBtn = el("button", "menu_button menu_button_icon");
+  const fullscreenBtn = el(
+    "button",
+    "menu_button menu_button_icon pme-icon-btn"
+  );
   fullscreenBtn.type = "button";
   fullscreenBtn.title = "Open fullscreen";
   fullscreenBtn.innerHTML =
     '<i class="fa-solid fa-up-right-and-down-left-from-center"></i>';
   actions.appendChild(fullscreenBtn);
 
-  const addBtn = el("button", "menu_button menu_button_icon pme-add-btn");
+  const addBtn = el(
+    "button",
+    "menu_button menu_button_icon pme-icon-btn pme-add-btn"
+  );
   addBtn.type = "button";
   addBtn.title = "Add Item";
   addBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
@@ -285,12 +289,18 @@ export function createAdditionalDescriptionsCard() {
 
   const addGroupBtn = el(
     "button",
-    "menu_button menu_button_icon pme-add-group-btn"
+    "menu_button menu_button_icon pme-icon-btn pme-add-group-btn"
   );
   addGroupBtn.type = "button";
   addGroupBtn.title = "Add Group";
   addGroupBtn.innerHTML = '<i class="fa-solid fa-folder-plus"></i>';
   actions.appendChild(addGroupBtn);
+
+  const collapseBtn = el("button", "menu_button menu_button_icon pme-icon-btn");
+  collapseBtn.type = "button";
+  collapseBtn.title = "Collapse";
+  collapseBtn.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+  actions.appendChild(collapseBtn);
 
   header.appendChild(actions);
   root.appendChild(header);
@@ -354,6 +364,7 @@ export function createAdditionalDescriptionsCard() {
 
   function syncCollapsed() {
     body.classList.toggle("displayNone", collapsed);
+    root.classList.toggle("pme-collapsed", collapsed);
     collapseBtn.title = collapsed ? "Expand" : "Collapse";
     collapseBtn.innerHTML = collapsed
       ? '<i class="fa-solid fa-chevron-down"></i>'
@@ -423,7 +434,7 @@ export function createAdditionalDescriptionsCard() {
     const popupActions = el("div", "pme-actions");
     const addItemBtn2 = el(
       "button",
-      "menu_button menu_button_icon pme-add-btn"
+      "menu_button menu_button_icon pme-icon-btn pme-add-btn"
     );
     addItemBtn2.type = "button";
     addItemBtn2.title = "Add Item";
@@ -437,7 +448,7 @@ export function createAdditionalDescriptionsCard() {
 
     const addGroupBtn2 = el(
       "button",
-      "menu_button menu_button_icon pme-add-group-btn"
+      "menu_button menu_button_icon pme-icon-btn pme-add-group-btn"
     );
     addGroupBtn2.type = "button";
     addGroupBtn2.title = "Add Group";

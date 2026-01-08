@@ -114,7 +114,7 @@ export function createPersonaList({ getPowerUser, bus }) {
   header.appendChild(titleWrap);
 
   const actions = el("div", "pme-actions");
-  const refreshBtn = el("button", "menu_button menu_button_icon");
+  const refreshBtn = el("button", "menu_button menu_button_icon pme-icon-btn");
   refreshBtn.type = "button";
   refreshBtn.title = "Refresh list";
   refreshBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i>';

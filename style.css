@@ -72,8 +72,7 @@
 }
 
 .pme-card-title {
-  font-weight: 700;
-  margin-bottom: 6px;
+  font-weight: 700; 
 }
 
 .pme-card-body {
@@ -104,15 +103,15 @@
 
 .pme-icon-btn {
   /* Match native Persona Management icon controls sizing */
-  height: 28px;
-  width: 28px;
+  height: 24px;
+  width: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  min-width: 28px;
-  min-height: 28px;
-  line-height: 1;
+  min-width: 24px;
+  min-height: 24px;
+  line-height: 1; 
 }
 
 .pme-icon-btn > i {
@@ -206,6 +205,11 @@
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 6px;
+}
+
+/* When a card is collapsed, remove extra spacing below the header */
+.pme-card.pme-collapsed > .pme-card-title-row {
+  margin-bottom: 0;
 }
 
 .pme-actions {
