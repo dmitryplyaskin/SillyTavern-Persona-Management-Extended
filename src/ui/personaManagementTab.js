@@ -111,6 +111,8 @@ function el(tag, className, text) {
 let personasCache = /** @type {string[]|null} */ (null);
 let personasLoadPromise = /** @type {Promise<string[]>|null} */ (null);
 let autoScrollToActiveNext = false;
+let personaSearchQuery = "";
+let personaListScrollTop = 0;
 
 let personaListState =
   /** @type {{listEl: HTMLElement, searchEl: HTMLInputElement, countEl: HTMLElement}|null} */ (
@@ -119,14 +121,19 @@ let personaListState =
 
 let nativePersonaListObserver = /** @type {MutationObserver|null} */ (null);
 let refreshListTimer = /** @type {number|undefined} */ (undefined);
+let wasPersonaDrawerOpen = false;
+let personaDrawerObserver = /** @type {MutationObserver|null} */ (null);
 
-function schedulePersonaListRefresh({ autoScroll = false } = {}) {
+function schedulePersonaListRefresh({
+  autoScroll = false,
+  invalidateCache = true,
+} = {}) {
   autoScrollToActiveNext ||= autoScroll;
   if (refreshListTimer) window.clearTimeout(refreshListTimer);
   refreshListTimer = window.setTimeout(() => {
     refreshListTimer = undefined;
     if (!personaListState) return;
-    personasCache = null;
+    if (invalidateCache) personasCache = null;
     void populatePersonaList(
       personaListState.listEl,
       personaListState.searchEl.value,
@@ -220,7 +227,8 @@ function renderCurrentPersonaPanel() {
   const card = el("div", "pme-card pme-current");
   const header = el("div", "pme-current-top");
 
-  const title = el("div", "pme-current-title", "Current Persona");
+  // Header title should be the persona name (match original UI intent)
+  const title = el("div", "pme-current-title", personaName || "[Persona Name]");
   header.appendChild(title);
 
   const buttons = el("div", "pme-current-buttons");
@@ -259,12 +267,6 @@ function renderCurrentPersonaPanel() {
   );
   header.appendChild(buttons);
   card.appendChild(header);
-
-  const nameRow = el("div", "pme-current-name-row");
-  nameRow.appendChild(
-    el("div", "pme-current-name", personaName || "[Persona Name]")
-  );
-  card.appendChild(nameRow);
 
   // Description
   const descHeader = el("div", "pme-section-header");
@@ -367,15 +369,34 @@ function renderCurrentPersonaPanel() {
   refreshTokens();
 
   // Wire inputs to ST data model
-  textarea.addEventListener("input", () => {
-    power_user.persona_description = String(textarea.value);
+  // NOTE: ST "Expand editor" uses jQuery `.trigger('input')` on the original element.
+  // Native `addEventListener('input')` is not guaranteed to receive that trigger,
+  // so we bind both native and jQuery listeners and dedupe by value.
+  let lastDescValue = String(textarea.value ?? "");
+  const onDescInput = () => {
+    const next = String(textarea.value ?? "");
+    if (next === lastDescValue) return;
+    lastDescValue = next;
+
+    power_user.persona_description = next;
     const descriptor = getOrCreatePersonaDescriptor();
     descriptor.description = power_user.persona_description;
     saveSettingsDebounced();
     refreshTokens();
 
+    // Keep native PM controls in sync (for consistency and for other ST listeners)
     syncNativePersonaControls();
-  });
+
+    // Update our persona list preview automatically (without reloading avatars list)
+    schedulePersonaListRefresh({ invalidateCache: false });
+  };
+  textarea.addEventListener("input", onDescInput);
+  try {
+    // eslint-disable-next-line no-undef
+    if (typeof $ === "function") $(textarea).on("input", onDescInput);
+  } catch {
+    // ignore
+  }
 
   select.addEventListener("input", () => {
     power_user.persona_description_position = Number(select.value);
@@ -422,7 +443,8 @@ function makeIconButton(title, iconClass, onClick, { danger = false } = {}) {
     onClick();
     // Some actions (rename/image/duplicate/delete) update persona list asynchronously.
     // Schedule list refresh to avoid manual refresh button.
-    schedulePersonaListRefresh({ autoScroll: true });
+    // Auto-scroll is intentionally NOT used here: scroll should happen only on initial UI open.
+    schedulePersonaListRefresh({ invalidateCache: true });
   });
   return btn;
 }
@@ -456,8 +478,10 @@ function renderPersonaListBlock() {
   const search = el("input", "text_pole pme-persona-search");
   search.type = "search";
   search.placeholder = "Search...";
+  search.value = personaSearchQuery;
   let searchTimer = /** @type {number|undefined} */ (undefined);
   search.addEventListener("input", () => {
+    personaSearchQuery = String(search.value ?? "");
     if (searchTimer) window.clearTimeout(searchTimer);
     searchTimer = window.setTimeout(() => {
       searchTimer = undefined;
@@ -485,6 +509,9 @@ function renderPersonaListBlock() {
 
   const list = el("div", "pme-persona-list");
   list.textContent = "Loading personas…";
+  list.addEventListener("scroll", () => {
+    personaListScrollTop = list.scrollTop;
+  });
   block.appendChild(list);
 
   personaListState = { listEl: list, searchEl: search, countEl };
@@ -510,12 +537,17 @@ function renderPersonaListBlock() {
         navigateToCurrent: false,
       });
     } finally {
-      schedulePersonaListRefresh({ autoScroll: true });
+      // Refresh selection highlight, but don't auto-scroll on every selection change.
+      schedulePersonaListRefresh({ invalidateCache: false });
       refreshAdvancedUIIfVisible();
     }
   });
 
-  void populatePersonaList(list, "", countEl, { autoScroll: true });
+  // Auto-scroll only when UI is opened (flag is set by applyMode)
+  void populatePersonaList(list, personaSearchQuery, countEl, {
+    autoScroll: autoScrollToActiveNext,
+  });
+  autoScrollToActiveNext = false;
   return block;
 }
 
@@ -525,6 +557,9 @@ async function populatePersonaList(
   countEl,
   { autoScroll = false } = {}
 ) {
+  // Preserve scroll across re-renders (the list is rebuilt via innerHTML = "").
+  // We keep a module-level scrollTop to also survive full UI re-renders.
+  const preserveScrollTop = personaListScrollTop;
   const q = String(query ?? "")
     .trim()
     .toLowerCase();
@@ -606,6 +641,11 @@ async function populatePersonaList(
     if (active instanceof HTMLElement) {
       active.scrollIntoView({ block: "nearest" });
     }
+    personaListScrollTop = listEl.scrollTop;
+  } else {
+    // Restore previous scroll position (avoid jumping to top on click/refresh).
+    listEl.scrollTop = preserveScrollTop;
+    personaListScrollTop = preserveScrollTop;
   }
 }
 
@@ -728,21 +768,25 @@ export function applyMode() {
 
   const advancedEnabled = getAdvancedModeEnabled();
 
+  // Drawer open/close state (so we can auto-scroll only when the UI is opened)
+  const drawerOpen = !container.classList.contains("closedDrawer");
+  const openingDrawerNow = drawerOpen && !wasPersonaDrawerOpen;
+  wasPersonaDrawerOpen = drawerOpen;
+
   const defaultBlock = getDefaultBlock();
   if (defaultBlock) {
     defaultBlock.classList.toggle("displayNone", advancedEnabled);
   }
 
   const root = getOrCreateAdvancedRoot(container);
+  const wasVisible = !root.classList.contains("displayNone");
   root.classList.toggle("displayNone", !advancedEnabled);
 
   if (advancedEnabled) {
-    autoScrollToActiveNext = true;
+    // Auto-scroll only when Advanced UI becomes visible (opening / switching modes),
+    // not on every re-render while the user is already interacting inside it.
+    if (!wasVisible || openingDrawerNow) autoScrollToActiveNext = true;
     renderAdvancedUI(root);
-    // If list is already mounted, auto-scroll once
-    if (personaListState) {
-      schedulePersonaListRefresh({ autoScroll: true });
-    }
   } else {
     // When going back to Normal mode, sync native UI from power_user
     try {
@@ -758,6 +802,31 @@ export function ensurePersonaManagementUI() {
   const container = getPersonaManagementRoot();
   if (!container) {
     return false;
+  }
+
+  // Track drawer open/close so auto-scroll happens only on open.
+  // This also fixes the case when the drawer is closed and reopened without our code running in-between.
+  if (!personaDrawerObserver) {
+    personaDrawerObserver = new MutationObserver(() => {
+      const drawerOpen = !container.classList.contains("closedDrawer");
+      const openedNow = drawerOpen && !wasPersonaDrawerOpen;
+      wasPersonaDrawerOpen = drawerOpen;
+
+      if (openedNow && getAdvancedModeEnabled()) {
+        autoScrollToActiveNext = true;
+        // If the list is already mounted, scroll it immediately; otherwise, next render will consume the flag.
+        if (personaListState) {
+          schedulePersonaListRefresh({
+            autoScroll: true,
+            invalidateCache: false,
+          });
+        }
+      }
+    });
+    personaDrawerObserver.observe(container, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
   }
 
   ensureAdvancedToggle();

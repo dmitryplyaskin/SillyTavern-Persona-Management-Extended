@@ -90,6 +90,10 @@
 
 .pme-current-title {
   font-weight: 700;
+  font-size: 1.05rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pme-current-buttons {
@@ -99,28 +103,24 @@
 }
 
 .pme-icon-btn {
-  height: 32px;
-  width: 32px;
+  /* Match native Persona Management icon controls sizing */
+  height: 28px;
+  width: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
+  min-width: 28px;
+  min-height: 28px;
+  line-height: 1;
+}
+
+.pme-icon-btn > i {
+  font-size: 0.9em;
 }
 
 .pme-danger {
   background: rgba(255, 0, 0, 0.08);
-}
-
-.pme-current-name-row {
-  margin-bottom: 8px;
-}
-
-.pme-current-name {
-  font-size: 1.05rem;
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .pme-section-header {
@@ -157,18 +157,24 @@
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-wrap: wrap; /* prevent layout break when Depth/Role become visible */
 }
 
 .pme-position-select {
   height: 32px;
   border-radius: 8px;
+  flex: 1 1 260px;
   min-width: 260px;
+  max-width: 100%;
 }
 
 .pme-depth-wrap {
   display: flex;
   gap: 10px;
   align-items: center;
+  flex: 1 1 260px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .pme-depth-label {
@@ -186,6 +192,12 @@
 .pme-role-select {
   height: 32px;
   min-width: 120px;
+}
+
+@media (max-width: 700px) {
+  .pme-depth-wrap {
+    justify-content: flex-start;
+  }
 }
 
 .pme-card-title-row {
