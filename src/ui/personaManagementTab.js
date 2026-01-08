@@ -113,6 +113,85 @@ let personasLoadPromise = /** @type {Promise<string[]>|null} */ (null);
 let autoScrollToActiveNext = false;
 let personaSearchQuery = "";
 let personaListScrollTop = 0;
+let linksCollapsed = true;
+
+/**
+ * Native Persona Management blocks we temporarily relocate into our Advanced UI.
+ * We move real nodes (not clones) to preserve all ST event handlers.
+ */
+let relocatedNative =
+  /** @type {{nodes: HTMLElement[], origins: Map<HTMLElement, {parent: Node, nextSibling: ChildNode|null}>}|null} */ (
+    null
+  );
+
+function collectNativeRelocatableNodes() {
+  /** @type {HTMLElement[]} */
+  const nodes = [];
+
+  const buttons = document.getElementById("persona_connections_buttons");
+  const info = document.getElementById("persona_connections_info_block");
+  const list = document.getElementById("persona_connections_list");
+
+  // "Connections" header is the previous element sibling of the buttons block in the native UI
+  const header = buttons?.previousElementSibling;
+  if (header instanceof HTMLElement && header.tagName === "H4") {
+    nodes.push(header);
+  }
+  if (buttons instanceof HTMLElement) nodes.push(buttons);
+  if (info instanceof HTMLElement) nodes.push(info);
+  if (list instanceof HTMLElement) nodes.push(list);
+
+  const global = document.querySelector(".persona_management_global_settings");
+  if (global instanceof HTMLElement) nodes.push(global);
+
+  return nodes;
+}
+
+function ensureRelocatedNativeState() {
+  if (relocatedNative) return relocatedNative;
+  relocatedNative = { nodes: [], origins: new Map() };
+  return relocatedNative;
+}
+
+function relocateNativeBlocks(target) {
+  const state = ensureRelocatedNativeState();
+
+  // Refresh node list each time in case ST rebuilt parts of the UI
+  const found = collectNativeRelocatableNodes();
+  // If nodes were detached by a previous full re-render, document queries won't find them.
+  // In that case, fall back to the last known node refs.
+  const nodes = found.length ? found : state.nodes;
+  if (found.length) state.nodes = found;
+
+  for (const node of nodes) {
+    if (!state.origins.has(node)) {
+      const parent = node.parentNode;
+      if (parent)
+        state.origins.set(node, { parent, nextSibling: node.nextSibling });
+    }
+    if (node.parentNode !== target) {
+      target.appendChild(node);
+    }
+  }
+}
+
+function restoreNativeBlocks() {
+  if (!relocatedNative) return;
+  for (const [node, origin] of relocatedNative.origins.entries()) {
+    // If already in the right place, skip.
+    if (node.parentNode === origin.parent) continue;
+    try {
+      origin.parent.insertBefore(node, origin.nextSibling);
+    } catch {
+      // If something changed drastically in the DOM, best-effort re-attach.
+      try {
+        origin.parent.appendChild(node);
+      } catch {
+        // ignore
+      }
+    }
+  }
+}
 
 let personaListState =
   /** @type {{listEl: HTMLElement, searchEl: HTMLInputElement, countEl: HTMLElement}|null} */ (
@@ -161,6 +240,13 @@ async function loadPersonas() {
 }
 
 function renderAdvancedUI(root) {
+  // IMPORTANT:
+  // We sometimes relocate native ST DOM nodes into our UI (Connections / Global Settings).
+  // Since this function rebuilds the whole root, we must first restore native nodes back
+  // to their original place, otherwise they become detached and can't be found by id
+  // on the next render.
+  restoreNativeBlocks();
+
   root.innerHTML = "";
 
   const panel = el("div", "pme-panel");
@@ -177,6 +263,8 @@ function renderAdvancedUI(root) {
 
   right.appendChild(renderCurrentPersonaPanel());
 
+  right.appendChild(renderLinksAndGlobalSettingsBlock());
+
   right.appendChild(renderAdditionalDescriptionsBlock());
 
   layout.appendChild(left);
@@ -184,6 +272,41 @@ function renderAdvancedUI(root) {
   panel.appendChild(layout);
 
   root.appendChild(panel);
+}
+
+function renderLinksAndGlobalSettingsBlock() {
+  const block = el("div", "pme-card pme-links");
+
+  const header = el("div", "pme-card-title-row");
+  header.appendChild(
+    el("div", "pme-card-title", "Connections & Global Settings")
+  );
+
+  const actions = el("div", "pme-actions");
+  const collapseBtn = el("button", "menu_button menu_button_icon");
+  collapseBtn.type = "button";
+  collapseBtn.title = linksCollapsed ? "Expand" : "Collapse";
+  collapseBtn.innerHTML = linksCollapsed
+    ? '<i class="fa-solid fa-chevron-down"></i>'
+    : '<i class="fa-solid fa-chevron-up"></i>';
+  collapseBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    linksCollapsed = !linksCollapsed;
+    refreshAdvancedUIIfVisible();
+  });
+  actions.appendChild(collapseBtn);
+  header.appendChild(actions);
+  block.appendChild(header);
+
+  const body = el("div", "pme-links-body");
+  body.classList.toggle("displayNone", linksCollapsed);
+  block.appendChild(body);
+
+  // Move native controls here (preserving ST behavior)
+  relocateNativeBlocks(body);
+
+  return block;
 }
 
 function clickNative(id) {
@@ -788,6 +911,9 @@ export function applyMode() {
     if (!wasVisible || openingDrawerNow) autoScrollToActiveNext = true;
     renderAdvancedUI(root);
   } else {
+    // Put back native blocks when returning to Normal mode
+    restoreNativeBlocks();
+
     // When going back to Normal mode, sync native UI from power_user
     try {
       syncNativePersonaControls();

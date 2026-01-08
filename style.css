@@ -247,6 +247,16 @@
   width: 100%;
 }
 
+/* Native blocks (Connections + Global Settings) embedded into Advanced UI */
+.pme-links-body > h4 {
+  margin-top: 8px;
+}
+
+.pme-links-body .persona_connections_buttons,
+.pme-links-body #persona_connections_buttons {
+  margin-bottom: 6px;
+}
+
 @media (max-width: 900px) {
   .pme-additional {
     max-width: 100%;
