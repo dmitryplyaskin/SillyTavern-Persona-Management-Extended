@@ -1,0 +1,53 @@
+/* Persona Management Extended */
+
+.pme-root {
+  padding: 10px 0;
+}
+
+.pme-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pme-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pme-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.pme-subtitle {
+  opacity: 0.75;
+  font-size: 0.9rem;
+}
+
+.pme-card {
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pme-card-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.pme-card-body {
+  opacity: 0.95;
+}
+
+.pme-list {
+  margin: 0;
+  padding-left: 18px;
+}
+

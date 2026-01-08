@@ -1,0 +1,12 @@
+{
+  "display_name": "Persona Management Extended",
+  "loading_order": 20,
+  "requires": [],
+  "optional": [],
+  "generate_interceptor": "pmeGenerateInterceptor",
+  "js": "index.js",
+  "css": "style.css",
+  "author": "Dmitry Plyaskin",
+  "version": "0.0.1",
+  "homePage": "https://github.com/dmitryplyaskin/SillyTavern-User-Persona-Extended"
+}
