@@ -2,6 +2,8 @@
 
 Persona Management Extended upgrades SillyTavern’s **Persona Management** with an optional **Advanced mode**.
 
+![Main Image](assets/main-image.png)
+
 ## Motivation
 
 If you’ve been roleplaying with multiple personas for a while, you’ve probably hit the same pain points:
