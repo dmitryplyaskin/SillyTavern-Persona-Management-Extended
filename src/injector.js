@@ -7,6 +7,7 @@ import {
   power_user,
   persona_description_positions,
 } from "/scripts/power-user.js";
+import { getContext } from "/scripts/st-context.js";
 import {
   getOrCreatePersonaDescriptor,
   user_avatar,
@@ -100,20 +101,98 @@ function parseEscapes(raw) {
  * Titles/group names are UI-only and must NOT be included in the prompt.
  *
  * @param {any} descriptor
+ * @param {any} ctx
  * @returns {string[]}
  */
-function collectEnabledAdditionalTexts(descriptor) {
+function collectEnabledAdditionalTexts(descriptor, ctx) {
   const blocks = descriptor?.pme?.blocks;
   if (!Array.isArray(blocks) || blocks.length === 0) return [];
 
   /** @type {string[]} */
   const out = [];
 
+  const currentChatId = String(ctx?.chatId ?? "").trim();
+  const currentChidRaw =
+    ctx?.characterId ?? ctx?.this_chid ?? ctx?.chid ?? ctx?.character_id;
+  const currentChid = Number(currentChidRaw);
+  const currentCharacter =
+    Number.isFinite(currentChid) && Array.isArray(ctx?.characters)
+      ? ctx.characters[currentChid]
+      : null;
+  const currentCharacterAvatar = String(currentCharacter?.avatar ?? "").trim();
+  const currentCharacterDescription = String(
+    currentCharacter?.description ?? ""
+  );
+
+  function evalMatchRule(query) {
+    const q = String(query ?? "").trim();
+    if (!q) return false;
+    const hay = currentCharacterDescription;
+    if (!hay) return false;
+
+    // /pattern/flags
+    if (q.startsWith("/")) {
+      const lastSlash = q.lastIndexOf("/");
+      if (lastSlash > 0) {
+        const pattern = q.slice(1, lastSlash);
+        const flags = q.slice(lastSlash + 1);
+        try {
+          const re = new RegExp(pattern, flags);
+          return re.test(hay);
+        } catch (e) {
+          log(
+            "Invalid match regex; treating as no-match",
+            `{query=${JSON.stringify(q)}, err=${String(e?.message ?? e)}}`
+          );
+          return false;
+        }
+      }
+    }
+
+    // Plain text match (case-insensitive substring)
+    return hay.toLowerCase().includes(q.toLowerCase());
+  }
+
+  function isConnectionsMatch(entity) {
+    const adv = entity?.adv;
+    const c = adv?.connections;
+    if (!c || c.enabled !== true) return false;
+
+    const chats = Array.isArray(c.chats) ? c.chats : [];
+    const chars = Array.isArray(c.characters) ? c.characters : [];
+
+    const chatOk = currentChatId ? chats.includes(currentChatId) : false;
+    const charOk = currentCharacterAvatar
+      ? chars.includes(currentCharacterAvatar) ||
+        chars.includes(String(currentChid))
+      : false;
+    return chatOk || charOk;
+  }
+
+  function isMatchMatch(entity) {
+    const adv = entity?.adv;
+    const m = adv?.match;
+    if (!m || m.enabled !== true) return false;
+    return evalMatchRule(m.query);
+  }
+
+  function isAutoEnabled(entity) {
+    return !!(entity?.adv?.connections?.enabled || entity?.adv?.match?.enabled);
+  }
+
+  function isEntityActive(entity) {
+    if (!entity || typeof entity !== "object") return false;
+    if (isAutoEnabled(entity)) {
+      return isConnectionsMatch(entity) || isMatchMatch(entity);
+    }
+    return entity.enabled !== false;
+  }
+
   for (const b of blocks) {
     if (!b || typeof b !== "object") continue;
 
     if (b.type === "item") {
-      if (b.enabled === false) continue;
+      if (!isEntityActive(b)) continue;
       const raw = String(b.text ?? "");
       // NOTE: emptiness check uses trim(), but the injected value must stay unmodified.
       if (raw.trim().length > 0) out.push(raw);
@@ -121,11 +200,12 @@ function collectEnabledAdditionalTexts(descriptor) {
     }
 
     if (b.type === "group") {
-      if (b.enabled === false) continue;
+      // Group activation gates the entire subtree.
+      if (!isEntityActive(b)) continue;
       const items = Array.isArray(b.items) ? b.items : [];
       for (const it of items) {
         if (!it || typeof it !== "object") continue;
-        if (it.enabled === false) continue;
+        if (!isEntityActive(it)) continue;
         const raw = String(it.text ?? "");
         // NOTE: emptiness check uses trim(), but the injected value must stay unmodified.
         if (raw.trim().length > 0) out.push(raw);
@@ -154,7 +234,8 @@ function buildFinalPersona(descriptor) {
     ? String(power_user?.persona_description ?? "")
     : String(descriptor?.pme?.local?.description ?? "");
 
-  const additions = collectEnabledAdditionalTexts(descriptor);
+  const ctx = getContext?.() ?? null;
+  const additions = collectEnabledAdditionalTexts(descriptor, ctx);
   // Do NOT trim the combined text; only empty blocks are filtered out.
   const additionsText = additions.join(joiner);
 

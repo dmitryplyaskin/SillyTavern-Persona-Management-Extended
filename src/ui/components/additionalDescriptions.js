@@ -21,8 +21,11 @@ function isAutoActive(entity) {
 function buildNextAdv(entity, patch) {
   const prev = entity?.adv && typeof entity.adv === "object" ? entity.adv : {};
   const prevConnections =
-    prev.connections && typeof prev.connections === "object" ? prev.connections : {};
-  const prevMatch = prev.match && typeof prev.match === "object" ? prev.match : {};
+    prev.connections && typeof prev.connections === "object"
+      ? prev.connections
+      : {};
+  const prevMatch =
+    prev.match && typeof prev.match === "object" ? prev.match : {};
 
   return {
     ...prev,
@@ -53,7 +56,9 @@ async function getStContextSafe() {
 function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
   const adv = entity?.adv && typeof entity.adv === "object" ? entity.adv : {};
   const connections =
-    adv.connections && typeof adv.connections === "object" ? adv.connections : {};
+    adv.connections && typeof adv.connections === "object"
+      ? adv.connections
+      : {};
   const match = adv.match && typeof adv.match === "object" ? adv.match : {};
 
   const wrap = el("div", "pme-adv");
@@ -80,11 +85,7 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
   const secConnections = el("div", "pme-adv-section");
   secConnections.appendChild(el("div", "pme-adv-title", "Connections"));
 
-  const connEnableLabel = el(
-    "label",
-    "checkbox_label pme-adv-checkbox",
-    ""
-  );
+  const connEnableLabel = el("label", "checkbox_label pme-adv-checkbox", "");
   const connEnabled = el("input");
   connEnabled.type = "checkbox";
   connEnabled.checked = !!connections.enabled;
@@ -166,9 +167,7 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
       null;
 
     const next = String(
-      charKey ??
-        window.prompt("Enter character avatar to bind:", "") ??
-        ""
+      charKey ?? window.prompt("Enter character avatar to bind:", "") ?? ""
     ).trim();
     if (!next) return;
 
@@ -199,7 +198,10 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
       chip.appendChild(img);
     }
     chip.appendChild(el("span", "pme-adv-chip-text", label));
-    const rm = el("button", "menu_button menu_button_icon pme-icon-btn pme-adv-chip-rm");
+    const rm = el(
+      "button",
+      "menu_button menu_button_icon pme-icon-btn pme-adv-chip-rm"
+    );
     rm.type = "button";
     rm.title = "Remove";
     rm.innerHTML = '<i class="fa-solid fa-xmark"></i>';
@@ -214,25 +216,26 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
   };
 
   const chats = Array.isArray(connections.chats) ? connections.chats : [];
-  const chars = Array.isArray(connections.characters) ? connections.characters : [];
+  const chars = Array.isArray(connections.characters)
+    ? connections.characters
+    : [];
 
   if (!chats.length && !chars.length) {
-    connList.appendChild(el("div", "text_muted pme-adv-help", "No connections yet."));
+    connList.appendChild(
+      el("div", "text_muted pme-adv-help", "No connections yet.")
+    );
   } else {
     if (chats.length) {
       connList.appendChild(el("div", "pme-adv-subtitle", "Chats"));
       for (const id of chats) {
         connList.appendChild(
-          makeChip(
-            { label: id, title: `Chat: ${id}` },
-            () => {
+          makeChip({ label: id, title: `Chat: ${id}` }, () => {
             patch({
               adv: buildNextAdv(entity, {
                 connections: { chats: chats.filter((x) => x !== id) },
               }),
             });
-            }
-          )
+          })
         );
       }
     }
@@ -240,20 +243,15 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
       connList.appendChild(el("div", "pme-adv-subtitle", "Characters"));
       for (const id of chars) {
         // Render a placeholder chip and hydrate with name/avatar from ST context when available.
-        const chip = makeChip(
-          { label: id, title: `Character: ${id}` },
-          () => {
-            patch({
-              adv: buildNextAdv(entity, {
-                connections: { characters: chars.filter((x) => x !== id) },
-              }),
-            });
-          }
-        );
+        const chip = makeChip({ label: id, title: `Character: ${id}` }, () => {
+          patch({
+            adv: buildNextAdv(entity, {
+              connections: { characters: chars.filter((x) => x !== id) },
+            }),
+          });
+        });
         chip.dataset.pmeCharAvatar = id;
-        connList.appendChild(
-          chip
-        );
+        connList.appendChild(chip);
       }
     }
   }
@@ -274,7 +272,9 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
   if (chars.length) {
     void getStContextSafe().then((ctx) => {
       const allChars = Array.isArray(ctx?.characters) ? ctx.characters : [];
-      for (const chip of Array.from(connList.querySelectorAll("[data-pme-char-avatar]"))) {
+      for (const chip of Array.from(
+        connList.querySelectorAll("[data-pme-char-avatar]")
+      )) {
         const avatar = String(chip.dataset.pmeCharAvatar ?? "").trim();
         if (!avatar) continue;
 
@@ -285,7 +285,9 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
         // Add icon if possible
         try {
           const iconUrl =
-            avatar && avatar !== "none" && typeof ctx?.getThumbnailUrl === "function"
+            avatar &&
+            avatar !== "none" &&
+            typeof ctx?.getThumbnailUrl === "function"
               ? ctx.getThumbnailUrl("avatar", avatar)
               : "";
           if (iconUrl) {
@@ -349,10 +351,21 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
     el(
       "div",
       "text_muted pme-adv-help",
-      "If the rule matches the current character description, this item is activated automatically."
+      "Matches against: Character → Description."
     )
   );
   body.appendChild(secMatch);
+
+  // Group-specific note
+  if (kind === "group") {
+    body.appendChild(
+      el(
+        "div",
+        "text_muted pme-adv-help",
+        "Group rules control the activation of the group as a whole. Items inside the group keep their own activation settings. If AUTO is enabled on both levels, make sure the rules are not contradictory."
+      )
+    );
+  }
 
   // --- Footer help
   body.appendChild(
