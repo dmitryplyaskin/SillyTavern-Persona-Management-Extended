@@ -1,390 +1,204 @@
-# Persona Management Extended (SillyTavern Extension)
+# Persona Management Extended (PME) — SillyTavern Extension
 
-Этот файл — **“спека”/контекст проекта** для расширения `Persona Management Extended`.  
-Цель — чтобы между сессиями разработки можно было быстро восстановить: **что делаем, где в коде ST смотреть, как интегрируемся и какие инварианты соблюдаем**.
+Persona Management Extended upgrades SillyTavern’s **Persona Management** with an optional **Advanced mode**.
 
----
+## Motivation
 
-## 0) TL;DR
+If you’ve been roleplaying with multiple personas for a while, you’ve probably hit the same pain points:
+you want to quickly add **context** (outfits, scene details, lore, rules, mood, etc.) without turning your main persona description into a mess.
 
-Расширение добавляет **расширенный режим Persona Management** прямо в табе Persona Management:
+I previously made **User Persona Extended**. It was a good idea and helped a lot — but it also had **fundamental limitations** in its core approach and a set of bugs that I couldn’t reliably fix over time.
 
-- **Normal mode**: работает штатный UI SillyTavern.
-- **Advanced mode**: штатный контент Persona Management **скрывается**, и показывается наш UI (наш “Persona Manager v2”).
+So I decided to start over from scratch and rethink the extension properly:
 
-В Advanced mode сейчас реализовано:
+- Instead of trying to “patch” the existing Persona Management UI, PME provides its own **Advanced UI** for persona management.
+- This gives me the freedom to build features the way I believe they should work, with a cleaner experience.
+- It also makes new features easier to implement because PME is **less dependent on SillyTavern’s original UI and implementation details**.
 
-- **Список персон** слева: поиск, сортировки, превью описания, бейдж _Lorebook_.
-- **Панель текущей персоны** справа (вместо штатной): редактирование Persona Description + Position (+ Depth/Role при `In-chat @ Depth`), токены, кнопки rename/duplicate/delete/image/lore и т.п.
-- **Sync with original persona (toggle)**: можно “отвязать” расширенную версию описания от оригинальной (редактировать локально) и затем снова “привязать”, выбрав источник истины.
-- **Connections & Global Settings**: перенесены из штатного UI путём **перемещения реальных DOM‑нод** (чтобы сохранить обработчики ST).
-- **Additional Descriptions**: редактор блоков (item/group) с enable/disable, collapse, удалением, и **ручным reorder** (стрелки вверх/вниз), плюс fullscreen‑режим.
-- **Settings**: настройки сборки промпта (wrapper + joiner для Additional Descriptions).
+It helps you:
 
-Важно: **инжект в промпт на генерации реализован через runtime‑подмену**:
+- Manage personas faster (search, sorting, better overview)
+- Keep **scenario-specific persona add-ons** as toggleable blocks (**Additional Descriptions**)
+- Automatically enable persona add-ons depending on the **current chat** or **current character**
+- Keep your base persona clean: prompt changes are applied **only during generation**
 
-- при старте генерации (после выполнения slash‑команд) расширение временно подменяет `power_user.persona_description` (и при необходимости position/depth/role),
-- добавляет **Additional Descriptions** (только enabled) в конец текста,
-- затем гарантированно откатывает значения на `GENERATION_ENDED`/`GENERATION_STOPPED`.
-
-Это нужно, чтобы:
-
-- **не засорять “оригинальную” персону** служебными шаблонами/переменными расширения,
-- но при этом **влиять на итоговый prompt** ровно на время генерации.
-
-Дополнительно:
-
-- Advanced UI переведён на архитектуру **mount один раз → update точечно** (без постоянного полного ререндера).
-- В Advanced UI перенесены штатные блоки **Connections & Global Settings** (перемещаем реальные DOM-ноды ST, чтобы не ломать обработчики).
-- Additional Descriptions реализованы как **упорядоченные blocks[]** (item/group) — порядок важен для будущей сборки промпта.
-
-См. отдельный гайд по UI/рендеру: `UI_RENDER_GUIDE.md`.
+> PME does **not** patch SillyTavern core files. You can always switch back to the default UI.
 
 ---
 
-## 1) Главные цели
+## What you get
 
-- **Чистый UI**: убрать “грязь” от смешивания двух интерфейсов (штатного и нашего).
-- **Additional Descriptions v2**:
-  - группы (folders/sets) с массовым enable/disable;
-  - блоки внутри групп;
-  - быстрые действия (reorder уже есть; остальное — постепенно).
-- **Управление Persona Description без ломания штатного UI**:
-  - расширенный редактор (токены, удобные контролы);
-  - опциональное “отвязывание” (локальная версия описания/позиции/глубины/роли на персону).
-- **Никакой порчи базового описания на диск**: любые будущие инжекты должны быть только runtime.
-- **Переживает перезапуски**: данные сохраняются и восстанавливаются.
-- **Совместимость с backup/restore персон**: данные хранятся внутри `power_user.persona_descriptions[avatarId]` и попадают в бэкап персон штатно.
+### Advanced mode (inside Persona Management)
 
----
+When Advanced mode is ON, SillyTavern’s default Persona Management content is hidden and replaced with PME’s UI:
 
-## 2) Негативные цели (что НЕ делаем)
-
-- Не патчим core-файлы SillyTavern.
-- Не делаем “идеальный публичный API” — используем внутренние модули/DOM, но **минимизируем хрупкость** (не удаляем штатный DOM, а скрываем).
-- Не переписываем весь Persona Management 1:1 сразу. Сначала делаем ядро: модель данных + UI + безопасный инжект.
-
----
-
-## 3) Термины (внутри проекта)
-
-- **Persona**: сущность ST, идентифицируется `avatarId` (файл в `User Avatars/`), текущая — `user_avatar`.
-- **Base persona description**: значение `power_user.persona_description` и UI-поле `#persona_description`.
-- **Additional Description**: дополнительный блок текста, включаемый/выключаемый.
-- **Group**: группа блоков Additional Descriptions, тоже включаемая/выключаемая.
-- **Override (planned)**: правило активации (например “в этом чате включить группу X”). Сейчас override’ы не реализованы.
-- **Advanced mode**: наш UI внутри `#PersonaManagement`.
-
----
-
-## 4) Инварианты (важно не сломать)
-
-1. **Normal mode полностью сохраняет штатное поведение ST**.
-2. Advanced mode **не должен удалять/перестраивать** штатные элементы, только:
-   - скрывать `#persona-management-block`,
-   - показывать наш контейнер.
-3. **Никогда не сохраняем “инжектнутый” текст в `power_user.persona_description` на диск**.
-4. Инжект **только на генерацию**, с гарантированным откатом даже при ошибках/прерывании.
-
----
-
-## 5) Где смотреть в исходниках SillyTavern (карта)
-
-### 5.1 Разметка Persona Management (DOM)
-
-Файл: `public/index.html`
-
-Ключевые элементы:
-
-- `#persona-management-button` — кнопка/дровер.
-- `#PersonaManagement` — контейнер дровера.
-- `#persona-management-block` — **весь штатный контент**, который мы будем скрывать в Advanced mode.
-- `#user_avatar_block` — список персон (левая колонка).
-- `#persona_description` — textarea описания.
-- Кнопки: `#persona_rename_button`, `#persona_duplicate_button`, `#persona_delete_button`, `#lock_user_name`, `#lock_persona_to_char`, `#lock_persona_default`, и т.д.
-
-### 5.2 Логика Persona Management
-
-Файл: `public/scripts/personas.js`
-
-Здесь важно:
-
-- `export let user_avatar` — текущая персона (avatarId).
-- `export async function setUserAvatar(...)` — переключение персоны.
-- `export async function getUserAvatars(...)` — список персон.
-- `export function setPersonaDescription()` — синхронизация UI ←→ `power_user`.
-- `power_user.personas` и `power_user.persona_descriptions` — основные структуры хранения персон.
-- Локи: chat/character/default (см. `togglePersonaLock`, `isPersonaLocked`, `loadPersonaForCurrentChat`).
-
-### 5.3 Система расширений + хранилища/метаданные
-
-Файл: `public/scripts/extensions.js`
-
-Полезное:
-
-- `extension_settings` — глобальные настройки расширений (персистентно).
-- `saveMetadataDebounced()` — сохранение `chat_metadata` безопасно при смене чата/персонажа.
-- `runGenerationInterceptors(...)` + `manifest.generate_interceptor` — механизм хуков “на генерацию”.
-- `writeExtensionField(characterId, key, value)` — запись extension-полей в **character card** (это для персонажей, не для persona).
-
-### 5.4 Глобальные состояния / события
-
-Файл: `public/script.js` (точка сборки фронта)
-
-Важно:
-
-- `eventSource`, `event_types` — события приложения.
-- `power_user`, `chat_metadata`, текущие `characterId/groupId` через `getContext()` (импорт из `scripts/extensions.js`).
-
----
-
-## 6) Точки интеграции (как мы встраиваемся)
-
-### 6.1 Встраивание UI
-
-Мы добавляем в `#PersonaManagement`:
-
-- **переключатель режимов** Normal/Advanced (лучше в верхней панели рядом с `Backup/Restore`, но можно и в отдельной строке).
-- контейнер `#pme_root` (наш UI).
-
-Поведение:
-
-- Normal: `#persona-management-block` visible, `#pme_root` hidden.
-- Advanced: `#persona-management-block` hidden, `#pme_root` visible.
-
-### 6.2 Отслеживание переключений (персона/чат/персонаж)
-
-События/сигналы:
-
-- `event_types.APP_READY` — можно создавать DOM-обвязку.
-- `event_types.CHAT_CHANGED` — реагировать на смену чата и/или авто-переключение персоны.
-- Клик по `#persona-management-button` — удобный момент, чтобы “достроить UI”, если DOM ещё не готов.
-
-### 6.3 Инжект в промпт (главная идея v2)
-
-Состояние на текущий момент:
-
-- В `manifest.json` задан `generate_interceptor: "pmeGenerateInterceptor"`.
-- Реальная подмена применяется **раньше**, чем вызывается `runGenerationInterceptors()` (см. ниже), чтобы попасть в `persona`, вычисляемую SillyTavern.
-- `globalThis.pmeGenerateInterceptor` остаётся как “safety net” (если ранний хук не сработал).
-
-Стратегия (как реализовано сейчас):
-
-- Не трогаем содержимое `#persona_description` как источник истины.
-- Храним **состояние** отдельно (наша модель данных).
-- На генерации вычисляем итоговый текст:
-  - `finalPersonaText = basePersonaText + enabledAdditions(...)`,
-  - временно подменяем **runtime** значения `power_user.persona_description` (+ при разлинковке также position/depth/role),
-  - после генерации откатываем.
-
-Технические варианты “хука на генерацию”:
-
-- **A (реально используемая точка для применения патча)**: `event_types.GENERATION_AFTER_COMMANDS` — это важно, потому что SillyTavern вычисляет `persona` через `getCharacterCardFields()` **до** `runGenerationInterceptors()`.
-- **B (safety net)**: `manifest.generate_interceptor` (`runGenerationInterceptors`) — поздняя стадия, но может быть полезна для совместимости.
-
-Почему это важно: так мы избегаем классов багов “дублирование при переключении персон/чатов” и “персистентная порча описания”.
-
-#### 6.3.1 Как работает `generate_interceptor` (практика)
-
-Файл: `public/scripts/extensions.js` вызывает интерсепторы так:
-`globalThis[manifest.generate_interceptor](chat, contextSize, abort, type)`
-
-Что важно понимать про порядок выполнения в SillyTavern:
-
-- SillyTavern вычисляет строку `persona` (через `getCharacterCardFields()`) **до** `runGenerationInterceptors()`.
-- Поэтому если нужно, чтобы подмена повлияла на `persona`/story string/WI‑скан — подмену нужно сделать **раньше**, чем `getCharacterCardFields()`.
-
-Как PME делает это сейчас (реальная реализация):
-
-- **Основной путь (ранний, корректный)**: подписка на `event_types.GENERATION_AFTER_COMMANDS` → `applyPatch(...)`.
-- **Откат**: на `event_types.GENERATION_ENDED` и `event_types.GENERATION_STOPPED` → `restorePatch(...)`.
-- **Safety net**: `globalThis.pmeGenerateInterceptor` всё ещё регистрируется и вызывает `applyPatch(...)`, но это поздняя стадия (может не попасть в `persona`, но влияет на другие потребители `power_user.persona_description`).
-
-Гейт:
-
-- Если `extension_settings.personaManagementExtended.enabled === false` → **ничего не подменяем**, Additional Descriptions не применяются к prompt.
-
-Технически, чтобы `runGenerationInterceptors()` видел интерсептор, нужно:
-
-- В `manifest.json` иметь `generate_interceptor: "pmeGenerateInterceptor"` (у нас уже есть)
-- Зарегистрировать в global scope функцию:
-  - `globalThis.pmeGenerateInterceptor = async (chat, contextSize, abort, type) => { ... }` (делается в `src/injector.js`)
-
-Важно (актуально):
-
-- Мы мутируем только runtime‑значения `power_user.*` и **никогда не сохраняем** их на диск.
-- Откат обязателен даже при abort/stop (для этого слушаем `GENERATION_STOPPED`).
-- В `src/injector.js` есть “таймер‑страховка” отката на случай, если end‑ивенты не отработали.
-
-#### 6.3.2 Алгоритм сборки итогового текста (PME)
-
-Сборка `finalPersonaText` для генерации:
-
-- **База**:
-  - если persona “linked” (`pme.linkedToNative !== false`) → берём `power_user.persona_description`
-  - если “unlinked” (`pme.linkedToNative === false`) → берём `pme.local.description` (там могут быть шаблоны/переменные, которые нельзя сохранять в “оригинал”)
+- **Personas list (left)**:
+  - Search
+  - Sorting (A–Z, ID, description length, connections count, lorebook first/last)
+  - Description preview
+  - Lorebook badge
+- **Current persona panel (right)**:
+  - Edit Persona Description
+  - See token count
+  - Choose where the persona description goes (Prompt / Author’s Note / In-chat @ Depth, etc.)
+  - Quick actions: rename, duplicate, delete, image, lorebook
+- **Connections & Global Settings**:
+  - The native SillyTavern controls are shown inside PME (so everything works the same)
 - **Additional Descriptions**:
+  - Add unlimited **items** and **groups**
+  - Enable/disable, collapse, delete
+  - Manual reorder (up/down)
+  - Fullscreen editor
+  - Token count per block
+- **Per-persona prompt settings**:
+  - Optional wrapper template
+  - Custom joiner between Additional Descriptions
 
-  - берём только `text` у enabled блоков,
-  - порядок строго как в `pme.blocks` (и внутри group — как в `group.items`),
-  - **title/названия групп не добавляются в prompt** (они UI-only),
-  - пустые/пробельные тексты (по `trim()`) скипаются, но **в prompt вставляется исходный `text` без модификаций**,
-  - склейка идёт через `pme.settings.additionalJoiner` (по умолчанию `\\n\\n`, поддерживает escape‑последовательности).
+### “Sync with original persona” (Linked / Unlinked)
 
-- **Wrapper (опционально)**:
-  - если `pme.settings.wrapperEnabled === true`, итоговый текст оборачивается шаблоном `pme.settings.wrapperTemplate`,
-  - в шаблоне заменяется плейсхолдер `{{PROMPT}}` на итоговый текст.
+Sometimes you want an “extended” persona description that you don’t want to permanently store as the original (for example, when experimenting).
 
----
+PME lets you toggle:
 
-## 7) Хранилище данных (persist) — что и где хранить
-
-На данный момент реально используется:
-
-1. **На персону (persona-scoped)** — основной уровень.  
-   Храним в `power_user.persona_descriptions[avatarId].pme` (единый namespace‑объект расширения).
-
-Плюсы:
-
-- переживает перезапуск;
-- попадает в штатный Backup/Restore персон (там сохраняют `persona_descriptions` целиком).
-
-2. **Глобальные настройки расширения** (`extension_settings.personaManagementExtended`):
-
-   - `enabled: boolean`: **гейт для инжекта на генерации**. Если `enabled === false`, расширение не подменяет persona description и **не применяет Additional Descriptions** к prompt.
-     (UI может оставаться доступным для редактирования данных, но на генерацию это не влияет.)
-
-3. **Локальные UI‑предпочтения аккаунта** (`accountStorage`):
-   - `pme_advanced_mode` — включён ли Advanced mode,
-   - `pme_persona_sort` — режим сортировки списка персон.
+- **Linked**: you edit the original persona description like normal.
+- **Unlinked**: you edit an **extended local version** for this persona. You can later re-link and choose:
+  - **Use original** (discard extended changes), or
+  - **Use extended** (apply extended to the original).
 
 ---
 
-## 8) Предлагаемая модель данных (черновик)
+## How prompt injection works (simple explanation)
 
-Namespace: `pme` (пример)
+When you generate a message, PME builds a **final persona text** like this:
 
-### 8.1 Персона-уровень (актуально на сейчас)
+1. Take the persona description (original or extended, depending on Linked/Unlinked)
+2. Append all **enabled Additional Descriptions** (in your chosen order)
+3. Optionally wrap it with a template (if enabled)
 
-`power_user.persona_descriptions[avatarId].pme`:
+This final text is applied **temporarily** for the generation, then restored.
 
-- **Additional Descriptions**:
-  - `version: 1`
-  - `blocks: PmeBlock[]`
-- **Sync/Unlink Persona Description**:
-  - `linkedToNative: boolean` (по умолчанию `true`)
-  - `local: { description, position, depth, role }` (используется, когда `linkedToNative === false`)
-- **Settings**:
-  - `settings.wrapperEnabled: boolean` (по умолчанию `false`)
-  - `settings.wrapperTemplate: string` (по умолчанию `<tag>{{PROMPT}}</tag>`, заменяем `{{PROMPT}}` на итоговый текст)
-  - `settings.additionalJoiner: string` (по умолчанию `\\n\\n`; поддерживаются escape-последовательности `\\n`, `\\t`, `\\r`, `\\\\`)
-
-`Block` бывает двух типов:
-
-- `type: "item"`: `{ id, title, text, enabled, collapsed }`
-- `type: "group"`: `{ id, title, enabled, collapsed, items: Item[] }`
-
-Где `Item` = `{ id, title, text, enabled, collapsed }`.
-
-Ключевой инвариант: **порядок `blocks[]` — это канонический порядок**, его нельзя автоматически сортировать, потому что он будет влиять на сборку итогового persona prompt (и позже появится ручной reorder).
-
-### 8.2 Чат-уровень (override)
-
-Не реализовано.
-
-### 8.3 Персонаж/группа (character/group) overrides
-
-Не реализовано.
+So your saved persona description is not permanently “polluted” by injected text.
 
 ---
 
-## 9) План реализации (roadmap)
+## Installation
 
-### Этап 0 — каркас (сделано)
+Install via SillyTavern’s extension installer using the repository URL:
 
-- `index.js`: инициализация + подписки на события ST.
-- `ui/`: контейнер + переключатель Normal/Advanced + Advanced UI.
-- `store/`: persist `pme` (blocks, linked/local).
-- `injector`: инжект на генерации + гарантированный откат.
-
-### Этап 1 — UI Advanced (сделано базовое)
-
-- Список персон: поиск/сорт/превью.
-- Панель текущей персоны: описание + position/depth/role + sync/unlink.
-- Additional Descriptions: item/group, enable/disable, reorder, fullscreen.
-- Перенос нативных Connections & Global Settings.
-
-### Этап 2 — безопасный инжект на генерацию (сделано)
-
-- Реализовать injector/хуки (реализовано: `src/injector.js`).
-- Гарантированный откат при abort/ошибках.
-- Зафиксировать инвариант: `#persona_description` не меняем автоматически.
-
-### Этап 3 — привязки
-
-Пока не реализовано (override’ы на чат/character/group отсутствуют).
-
-### Этап 4 — QoL
-
-- фильтр/поиск по группам/элементам,
-- сортировка, drag&drop,
-- импорт/экспорт (JSON),
-- quick actions: “enable only this group”, “disable all”, “clone group”, “copy to another persona”.
+`https://github.com/dmitryplyaskin/SillyTavern-Persona-Management-Extended`
 
 ---
 
-## 10) Отладка и диагностика
+## Import from User Persona Extended (migration)
 
-Рекомендуемые практики:
+If you used **User Persona Extended** before, you don’t have to manually recreate your blocks.
 
-- Все логи — с префиксом `[PME]`.
-- При каждом вычислении итогового текста логировать:
-  - `avatarId`,
-  - сколько активных групп/элементов,
-  - длину/токены (опционально).
-- Счётчик “сколько раз подряд сработал инжект без отката” — должен быть всегда 0.
+In **Extensions → Persona Management Extended**, click **Import from User Persona Extended**:
 
-Типовые места для поиска багов:
+- PME will automatically import **all your saved Additional Descriptions** from the old extension.
+- It keeps the **title / text / enabled state** and preserves the original order.
+- Your existing PME blocks are not deleted — imported items are added on top.
 
-- гонки на `CHAT_CHANGED` (персона может меняться авто-логикой ST),
-- генерация abort/stop — убедиться, что откат выполняется.
+This is the fastest way to move to PME without copy/pasting everything by hand.
 
 ---
 
-## 11) Структура файлов расширения (как мы будем раскладывать код)
+## Quick start
 
-Актуальная структура:
-
-- `index.js` — entrypoint: подписки на события ST, инициализация UI.
-- `style.css` — стили Advanced UI (namespace `.pme-*`).
-- `src/ui/personaManagementTab.js` — оркестратор режимов Normal/Advanced и lifecycle UI.
-- `src/ui/advancedApp.js` — сборка Advanced UI и подключение компонентов.
-- `src/ui/uiBus.js` — мини pub/sub (события UI) для декуплинга компонентов.
-- `src/ui/components/*`:
-  - `personaList.js` — список персон (поиск/сорт/скролл + badge Lorebook),
-  - `currentPersonaPanel.js` — текущая персона (описание/position/depth/role + поддержка Expand),
-  - `personaLinksGlobalSettings.js` — Connections & Global Settings (перенос нативных DOM-ноды ST),
-  - `additionalDescriptions.js` — Additional Descriptions (blocks item/group, коллапс, fullscreen modal),
-  - `dom.js` — DOM helpers.
-- `src/store/personaStore.js` — persona-scoped persist для `pme` (blocks[]).
-- `src/injector.js` — инжект на генерацию: runtime‑подмена `power_user.persona_description` + Additional Descriptions + откат.
-- `settings.html` / `settings.js` — настройки расширения (enable, import legacy, clear data).
+1. Open **Extensions** settings in SillyTavern.
+2. Find **Persona Management Extended** and make sure **Enable extension** is ON.
+3. Open **Persona Management**.
+4. Turn on the **Advanced** toggle (near the Persona Management header buttons).
+5. Select a persona and add a few **Additional Descriptions**:
+   - Click **+** to add an item
+   - Click **G+** to add a group
+6. Enable the blocks you want and generate a message — your enabled blocks will be included automatically.
 
 ---
 
-## 12) Совместимость и будущие риски
+## Using Additional Descriptions
 
-- Мы используем внутренние id/модули ST (`/scripts/personas.js`, `#persona-management-block` и т.п.).  
-  При обновлениях ST возможны поломки — поэтому **держим интеграцию поверхностной** (hide/show) и избегаем глубоких патчей.
-- Данные в `power_user.persona_descriptions[avatarId].pme` должны быть версионированы (`version`) и мигрируемы.
+Additional Descriptions are extra text blocks that PME can append after your main persona description.
 
-Примечание: сейчас проект в активной разработке, поэтому мы держим схему простой. Когда начнётся стабильное использование — добавим миграции.
+- **Items**: a single block of text.
+- **Groups**: a folder with multiple items inside (useful for themes like “Outfit”, “Lore”, “Setting rules”).
+
+### Order matters
+
+PME injects blocks **in the exact order you see in the list**.
+Use the **up/down arrows** to reorder.
+
+### AUTO activation (optional)
+
+Any item or group can be switched into **AUTO** mode:
+
+- **Connections**: auto-enable when the current chat or character matches your bindings.
+  - “Add chat” grabs the current chat (or you can enter an id manually)
+  - “Add character” binds to the current character
+- **Match rule**: auto-enable when a text or `/regex/flags` matches the **current character’s description**
+
+When AUTO is enabled, the manual “Enabled” toggle is replaced by an **AUTO** badge (activation is controlled by the rules).
 
 ---
 
-## 13) Ссылки
+## Settings (per persona)
 
-- `manifest.json`: `data/default-user/extensions/SillyTavern-Persona-Management-Extended/manifest.json`
-- UI Persona Management: `public/index.html` (блок `#PersonaManagement`)
-- Логика персон: `public/scripts/personas.js`
-- Extensions SDK-ish: `public/scripts/extensions.js`
+In Advanced mode, open the **Settings** card:
+
+- **Wrapper**:
+  - When enabled, PME inserts the final persona prompt into your template by replacing `{{PROMPT}}`.
+  - Example: `<system>{{PROMPT}}</system>`
+- **Additional Descriptions joiner**:
+  - Controls how blocks are joined.
+  - Default is `\n\n` (blank line).
+  - Supports `\n`, `\t`, `\r`, and `\\`.
+
+---
+
+## Extension settings (global)
+
+In **Extensions → Persona Management Extended**:
+
+- **Enable extension**: master toggle (when OFF, PME won’t affect generation)
+- **Import from User Persona Extended**: automatically imports your Additional Descriptions from the old extension
+- **Clear All Extension Data**: deletes PME data for all personas (with confirmation)
+
+---
+
+## Notes about data & backups
+
+- PME saves data **per persona**.
+- Persona backup/restore in SillyTavern will also include PME data (because it’s stored inside persona metadata).
+
+---
+
+## Troubleshooting
+
+- **I don’t see the Advanced toggle**
+
+  - Open Persona Management once (the toggle is injected into that UI).
+  - Make sure the extension is installed and enabled.
+
+- **Additional Descriptions don’t show up in generations**
+
+  - Check **Extensions → Persona Management Extended → Enable extension**.
+  - Make sure blocks are enabled (or correctly configured in AUTO mode).
+
+- **AUTO mode doesn’t activate**
+  - If you use Connections: confirm you added the correct chat / character.
+  - If you use Match: the rule matches the character’s **Description** field (not the name).
+
+---
+
+## License
+
+See `LICENSE`.
+
+## Author
+
+Dmitry Plyaskin
+
+## Support / Issues
+
+Please use the GitHub repository page:
+`https://github.com/dmitryplyaskin/SillyTavern-Persona-Management-Extended`
