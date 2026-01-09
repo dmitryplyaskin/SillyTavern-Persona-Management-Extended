@@ -11,6 +11,7 @@ import {
  * @property {string} text
  * @property {boolean} enabled
  * @property {boolean} collapsed
+ * @property {{advancedOpen?: boolean, connections?: {enabled?: boolean, chats?: string[], characters?: string[]}, match?: {enabled?: boolean, query?: string}}} [adv]
  */
 
 /**
@@ -20,6 +21,7 @@ import {
  * @property {boolean} enabled
  * @property {boolean} collapsed
  * @property {PmeItem[]} items
+ * @property {{advancedOpen?: boolean, connections?: {enabled?: boolean, chats?: string[], characters?: string[]}, match?: {enabled?: boolean, query?: string}}} [adv]
  */
 
 /**
@@ -45,6 +47,12 @@ const DEFAULT_SETTINGS = Object.freeze({
   additionalJoiner: "\\n\\n",
 });
 
+const DEFAULT_ADV = Object.freeze({
+  advancedOpen: false,
+  connections: { enabled: false, chats: [], characters: [] },
+  match: { enabled: false, query: "" },
+});
+
 let saveTimer = /** @type {number|undefined} */ (undefined);
 
 function scheduleSave() {
@@ -58,6 +66,49 @@ function scheduleSave() {
 function makeId() {
   // Keep it short & portable (no crypto requirement)
   return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function makeDefaultAdv() {
+  // Avoid relying on structuredClone availability.
+  return {
+    advancedOpen: false,
+    connections: { enabled: false, chats: [], characters: [] },
+    match: { enabled: false, query: "" },
+  };
+}
+
+/**
+ * @param {any} target
+ */
+function normalizeAdv(target) {
+  if (!target || typeof target !== "object") return;
+  target.adv ??= {};
+  if (typeof target.adv !== "object") target.adv = {};
+
+  if (typeof target.adv.advancedOpen !== "boolean")
+    target.adv.advancedOpen = DEFAULT_ADV.advancedOpen;
+
+  target.adv.connections ??= {};
+  if (typeof target.adv.connections !== "object") target.adv.connections = {};
+  if (typeof target.adv.connections.enabled !== "boolean")
+    target.adv.connections.enabled = DEFAULT_ADV.connections.enabled;
+  if (!Array.isArray(target.adv.connections.chats))
+    target.adv.connections.chats = [];
+  if (!Array.isArray(target.adv.connections.characters))
+    target.adv.connections.characters = [];
+  target.adv.connections.chats = target.adv.connections.chats
+    .map((x) => String(x ?? "").trim())
+    .filter(Boolean);
+  target.adv.connections.characters = target.adv.connections.characters
+    .map((x) => String(x ?? "").trim())
+    .filter(Boolean);
+
+  target.adv.match ??= {};
+  if (typeof target.adv.match !== "object") target.adv.match = {};
+  if (typeof target.adv.match.enabled !== "boolean")
+    target.adv.match.enabled = DEFAULT_ADV.match.enabled;
+  if (typeof target.adv.match.query !== "string")
+    target.adv.match.query = DEFAULT_ADV.match.query;
 }
 
 /**
@@ -91,18 +142,21 @@ export function getPmeData() {
       b.text = String(b.text ?? "");
       b.enabled = b.enabled ?? true;
       b.collapsed = b.collapsed ?? false;
+      normalizeAdv(b);
     } else if (b?.type === "group") {
       b.id = String(b.id ?? "").trim() || makeId();
       b.title = String(b.title ?? "").trim() || "Group";
       b.enabled = b.enabled ?? true;
       b.collapsed = b.collapsed ?? false;
       b.items ??= [];
+      normalizeAdv(b);
       for (const it of b.items) {
         it.id = String(it.id ?? "").trim() || makeId();
         it.title = String(it.title ?? "").trim() || "Item";
         it.text = String(it.text ?? "");
         it.enabled = it.enabled ?? true;
         it.collapsed = it.collapsed ?? false;
+        normalizeAdv(it);
       }
     }
   }
@@ -150,6 +204,7 @@ export function addItem() {
     text: "",
     enabled: true,
     collapsed: false,
+    adv: makeDefaultAdv(),
   };
   data.blocks.push(block);
   savePmeData();
@@ -171,6 +226,7 @@ export function addGroup(title = "") {
     enabled: true,
     collapsed: false,
     items: [],
+    adv: makeDefaultAdv(),
   };
   data.blocks.push(block);
   savePmeData();
@@ -250,6 +306,7 @@ export function addItemToGroup(groupId) {
     text: "",
     enabled: true,
     collapsed: false,
+    adv: makeDefaultAdv(),
   };
   group.items.push(item);
   savePmeData();

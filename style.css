@@ -454,6 +454,181 @@
   margin: 0;
 }
 
+.pme-auto-tag {
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  opacity: 0.9;
+  background: rgba(31, 122, 59, 0.16); /* dark green-ish */
+  border: 1px solid rgba(31, 122, 59, 0.28);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.pme-adv {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pme-adv-toggle {
+  height: 26px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  width: fit-content;
+}
+
+.pme-adv-toggle > span {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.pme-adv-body {
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px dashed rgba(255, 255, 255, 0.09);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pme-adv-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pme-adv-title {
+  font-weight: 700;
+  opacity: 0.92;
+}
+
+.pme-adv-subtitle {
+  font-weight: 700;
+  opacity: 0.75;
+  margin-top: 4px;
+}
+
+.pme-adv-checkbox {
+  margin: 0;
+}
+
+.pme-adv-help {
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+
+.pme-adv-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.pme-adv-btn {
+  height: 32px;
+  min-height: 32px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.pme-adv-btn > span {
+  white-space: nowrap;
+}
+
+.pme-adv-btn > i {
+  font-size: 0.95em;
+}
+
+.pme-adv-count {
+  margin-left: auto;
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+
+.pme-adv-input {
+  height: 32px;
+  width: 100%;
+}
+
+.pme-adv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pme-adv-chip {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pme-adv-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: 0 0 auto;
+  opacity: 0.95;
+}
+
+.pme-adv-chip-text {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pme-adv-chip-rm {
+  margin-left: auto;
+  height: 22px;
+  width: 22px;
+  min-width: 22px;
+  min-height: 22px;
+}
+
+.pme-adv-footer {
+  font-size: 0.88rem;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+.pme-additional-fullscreen {
+  text-align: left;
+}
+
+.pme-additional-fullscreen .pme-item,
+.pme-additional-fullscreen .pme-group,
+.pme-additional-fullscreen .pme-adv,
+.pme-additional-fullscreen .pme-card-title,
+.pme-additional-fullscreen .pme-adv-body,
+.pme-additional-fullscreen input,
+.pme-additional-fullscreen textarea,
+.pme-additional-fullscreen label,
+.pme-additional-fullscreen .text_muted {
+  text-align: left;
+}
+
 .pme-item-body {
   margin-top: 8px;
 }
