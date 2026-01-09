@@ -200,6 +200,8 @@ See `LICENSE`.
 
 Dmitry Plyaskin
 
+**Telegram Channel**: [@SillyInnkeeper](https://t.me/SillyInnkeeper) — news, updates, and project discussions.
+
 ## Support / Issues
 
 Please use the GitHub repository page:
