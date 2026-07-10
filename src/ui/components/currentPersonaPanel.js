@@ -10,6 +10,7 @@ import { callGenericPopup, POPUP_RESULT, POPUP_TYPE } from "/scripts/popup.js";
 
 import { el, setHidden } from "./dom.js";
 import { UI_EVENTS } from "../uiBus.js";
+import { t } from "../../../../../../i18n.js";
 
 function clickNative(id) {
   const node = document.getElementById(id);
@@ -123,11 +124,11 @@ export function createCurrentPersonaPanel({ getPersonaName, bus }) {
 
   // Header
   const header = el("div", "pme-current-top");
-  const titleEl = el("div", "pme-current-title", "[Persona Name]");
+  const titleEl = el("div", "pme-current-title", t`[Persona Name]`);
   const buttons = el("div", "pme-current-buttons");
 
   buttons.appendChild(
-    makeIconButton("Rename Persona", "fa-pencil", () => {
+    makeIconButton(t`Rename Persona`, "fa-pencil", () => {
       clickNative("persona_rename_button");
       window.setTimeout(
         () => bus?.emit(UI_EVENTS.PERSONA_LIST_INVALIDATED, {}),
@@ -136,7 +137,7 @@ export function createCurrentPersonaPanel({ getPersonaName, bus }) {
     })
   );
   buttons.appendChild(
-    makeIconButton("Click to set user name for all messages", "fa-sync", () =>
+    makeIconButton(t`Click to set user name for all messages`, "fa-sync", () =>
       clickNative("sync_name_button")
     )
   );
@@ -145,7 +146,7 @@ export function createCurrentPersonaPanel({ getPersonaName, bus }) {
 
   buttons.appendChild(
     makeIconButton(
-      "Sync with original persona (toggle)",
+      t`Sync with original persona (toggle)`,
       "fa-lock",
       async () => {
         const d = getDescriptor();
@@ -170,16 +171,16 @@ export function createCurrentPersonaPanel({ getPersonaName, bus }) {
           el(
             "div",
             "",
-            "Enable sync with the original persona?\n\nChoose which data should be treated as the source of truth:"
+            t`Enable sync with the original persona?\n\nChoose which data should be treated as the source of truth:`
           )
         );
 
         const result = await callGenericPopup(content, POPUP_TYPE.TEXT, "", {
           okButton: false,
-          cancelButton: "Cancel",
+          cancelButton: t`Cancel`,
           customButtons: [
-            { text: "Use original", result: POPUP_RESULT.CUSTOM1 },
-            { text: "Use extended", result: POPUP_RESULT.CUSTOM2 },
+            { text: t`Use original`, result: POPUP_RESULT.CUSTOM1 },
+            { text: t`Use extended`, result: POPUP_RESULT.CUSTOM2 },
           ],
         });
 
@@ -206,7 +207,7 @@ export function createCurrentPersonaPanel({ getPersonaName, bus }) {
   const linkBtn = /** @type {HTMLButtonElement} */ (buttons.lastElementChild);
 
   buttons.appendChild(
-    makeIconButton("Persona Lore", "fa-globe", (e) => {
+    makeIconButton(t`Persona Lore`, "fa-globe", (e) => {
       // Match native ST behavior: Alt+Click opens the selected lorebook itself.
       const selectedLorebook = String(
         power_user.persona_description_lorebook ?? ""
@@ -220,7 +221,7 @@ export function createCurrentPersonaPanel({ getPersonaName, bus }) {
   );
   const loreBtn = /** @type {HTMLButtonElement} */ (buttons.lastElementChild);
   buttons.appendChild(
-    makeIconButton("Change Persona Image", "fa-image", () => {
+    makeIconButton(t`Change Persona Image`, "fa-image", () => {
       clickNative("persona_set_image_button");
       window.setTimeout(
         () => bus?.emit(UI_EVENTS.PERSONA_LIST_INVALIDATED, {}),
@@ -229,7 +230,7 @@ export function createCurrentPersonaPanel({ getPersonaName, bus }) {
     })
   );
   buttons.appendChild(
-    makeIconButton("Duplicate Persona", "fa-clone", () => {
+    makeIconButton(t`Duplicate Persona`, "fa-clone", () => {
       clickNative("persona_duplicate_button");
       window.setTimeout(
         () => bus?.emit(UI_EVENTS.PERSONA_LIST_INVALIDATED, {}),
@@ -239,7 +240,7 @@ export function createCurrentPersonaPanel({ getPersonaName, bus }) {
   );
   buttons.appendChild(
     makeIconButton(
-      "Delete Persona",
+      t`Delete Persona`,
       "fa-skull",
       () => {
         clickNative("persona_delete_button");
@@ -258,10 +259,10 @@ export function createCurrentPersonaPanel({ getPersonaName, bus }) {
 
   // Description header
   const descHeader = el("div", "pme-section-header");
-  descHeader.appendChild(el("div", "pme-section-title", "Persona Description"));
+  descHeader.appendChild(el("div", "pme-section-title", t`Persona Description`));
   const maxBtn = document.createElement("i");
   maxBtn.className = "editor_maximize fa-solid fa-maximize right_menu_button";
-  maxBtn.title = "Expand the editor";
+  maxBtn.title = t`Expand the editor`;
   maxBtn.setAttribute("data-for", "pme_persona_description");
   descHeader.appendChild(maxBtn);
   root.appendChild(descHeader);
@@ -270,16 +271,15 @@ export function createCurrentPersonaPanel({ getPersonaName, bus }) {
   textarea.id = "pme_persona_description";
   textarea.className = "text_pole textarea_compact pme-current-textarea";
   textarea.rows = 8;
-  textarea.placeholder =
-    "Example:\n[{{user}} is a 28-year-old Romanian cat girl.]";
+  textarea.placeholder = t`Example:\n[{{user}} is a 28-year-old Romanian cat girl.]`;
   textarea.autocomplete = "off";
   root.appendChild(textarea);
 
   // Position + tokens header
   const posHeader = el("div", "pme-position-header");
-  posHeader.appendChild(el("div", "pme-section-title", "Position"));
+  posHeader.appendChild(el("div", "pme-section-title", t`Position`));
   const tokenBox = el("div", "pme-token-box");
-  tokenBox.appendChild(el("span", "", "Tokens: "));
+  tokenBox.appendChild(el("span", "", t`Tokens: `));
   const tokenCount = el("span", "pme-token-count", "0");
   tokenBox.appendChild(tokenCount);
   posHeader.appendChild(tokenBox);
@@ -291,16 +291,16 @@ export function createCurrentPersonaPanel({ getPersonaName, bus }) {
   const posSelect = document.createElement("select");
   posSelect.className = "pme-position-select";
   posSelect.innerHTML = `
-    <option value="${persona_description_positions.NONE}">None (disabled)</option>
-    <option value="${persona_description_positions.IN_PROMPT}">In Story String / Prompt Manager</option>
-    <option value="${persona_description_positions.TOP_AN}">Top of Author's Note</option>
-    <option value="${persona_description_positions.BOTTOM_AN}">Bottom of Author's Note</option>
-    <option value="${persona_description_positions.AT_DEPTH}">In-chat @ Depth</option>
+    <option value="${persona_description_positions.NONE}">${t`None (disabled)`}</option>
+    <option value="${persona_description_positions.IN_PROMPT}">${t`In Story String / Prompt Manager`}</option>
+    <option value="${persona_description_positions.TOP_AN}">${t`Top of Author's Note`}</option>
+    <option value="${persona_description_positions.BOTTOM_AN}">${t`Bottom of Author's Note`}</option>
+    <option value="${persona_description_positions.AT_DEPTH}">${t`In-chat @ Depth`}</option>
   `;
   posRow.appendChild(posSelect);
 
   const depthWrap = el("div", "pme-depth-wrap");
-  const depthLabel = el("label", "pme-depth-label", "Depth:");
+  const depthLabel = el("label", "pme-depth-label", t`Depth:`);
   const depthInput = document.createElement("input");
   depthInput.type = "number";
   depthInput.min = "0";
@@ -310,13 +310,13 @@ export function createCurrentPersonaPanel({ getPersonaName, bus }) {
   depthLabel.appendChild(depthInput);
   depthWrap.appendChild(depthLabel);
 
-  const roleLabel = el("label", "pme-depth-label", "Role:");
+  const roleLabel = el("label", "pme-depth-label", t`Role:`);
   const roleSelect = document.createElement("select");
   roleSelect.className = "text_pole pme-role-select";
   roleSelect.innerHTML = `
-    <option value="0">System</option>
-    <option value="1">User</option>
-    <option value="2">Assistant</option>
+    <option value="0">${t`System`}</option>
+    <option value="1">${t`User`}</option>
+    <option value="2">${t`Assistant`}</option>
   `;
   roleLabel.appendChild(roleSelect);
   depthWrap.appendChild(roleLabel);
@@ -336,8 +336,8 @@ export function createCurrentPersonaPanel({ getPersonaName, bus }) {
     if (icon)
       icon.className = `fa-solid ${linked ? "fa-lock" : "fa-lock-open"}`;
     linkBtn.title = linked
-      ? "Sync with original persona: ON"
-      : "Sync with original persona: OFF (editing extended version separately)";
+      ? t`Sync with original persona: ON`
+      : t`Sync with original persona: OFF (editing extended version separately)`;
   }
 
   function syncLorebookState() {
@@ -452,7 +452,7 @@ export function createCurrentPersonaPanel({ getPersonaName, bus }) {
     },
     update() {
       // Update header title
-      titleEl.textContent = String(getPersonaName?.() ?? "[Persona Name]");
+      titleEl.textContent = String(getPersonaName?.() ?? t`[Persona Name]`);
 
       const d = getDescriptor();
       ensurePme(d);

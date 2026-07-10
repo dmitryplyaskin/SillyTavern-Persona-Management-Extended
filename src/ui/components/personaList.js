@@ -8,6 +8,7 @@ import { getThumbnailUrl } from "/script.js";
 import { getPersonaSortMode, setPersonaSortMode } from "../../core/mode.js";
 import { el } from "./dom.js";
 import { UI_EVENTS } from "../uiBus.js";
+import { t } from "../../../../../../i18n.js";
 
 /**
  * @param {string} avatarId
@@ -108,7 +109,7 @@ export function createPersonaList({ getPowerUser, bus }) {
 
   const header = el("div", "pme-card-title-row");
   const titleWrap = el("div", "pme-card-title");
-  titleWrap.textContent = "Personas ";
+  titleWrap.textContent = t`Personas `;
   const countEl = el("span", "pme-count", "(0)");
   titleWrap.appendChild(countEl);
   header.appendChild(titleWrap);
@@ -121,7 +122,7 @@ export function createPersonaList({ getPowerUser, bus }) {
 
   const refreshBtn = el("button", "menu_button menu_button_icon pme-icon-btn");
   refreshBtn.type = "button";
-  refreshBtn.title = "Refresh list";
+  refreshBtn.title = t`Refresh list`;
   refreshBtn.innerHTML = '<i class="fa-solid fa-rotate-right"></i>';
   actions.appendChild(refreshBtn);
   header.appendChild(actions);
@@ -168,28 +169,28 @@ export function createPersonaList({ getPowerUser, bus }) {
   const controls = el("div", "pme-persona-controls");
   const search = el("input", "text_pole pme-persona-search");
   search.type = "search";
-  search.placeholder = "Search...";
+  search.placeholder = t`Search...`;
 
   const sort = el("select", "pme-persona-sort");
   sort.title = "Sort";
   sort.innerHTML = `
-    <option value="name_asc">A-Z</option>
-    <option value="name_desc">Z-A</option>
-    <option value="id_asc">ID ↑</option>
-    <option value="id_desc">ID ↓</option>
-    <option value="desc_len_asc">Description length ↑</option>
-    <option value="desc_len_desc">Description length ↓</option>
-    <option value="connections_asc">Connections ↑</option>
-    <option value="connections_desc">Connections ↓</option>
-    <option value="lorebook_first">Lorebook first</option>
-    <option value="lorebook_last">Lorebook last</option>
+    <option value="name_asc">${t`A-Z`}</option>
+    <option value="name_desc">${t`Z-A`}</option>
+    <option value="id_asc">${t`ID ↑`}</option>
+    <option value="id_desc">${t`ID ↓`}</option>
+    <option value="desc_len_asc">${t`Description length ↑`}</option>
+    <option value="desc_len_desc">${t`Description length ↓`}</option>
+    <option value="connections_asc">${t`Connections ↑`}</option>
+    <option value="connections_desc">${t`Connections ↓`}</option>
+    <option value="lorebook_first">${t`Lorebook first`}</option>
+    <option value="lorebook_last">${t`Lorebook last`}</option>
   `;
   controls.appendChild(search);
   controls.appendChild(sort);
   root.appendChild(controls);
 
   const listEl = el("div", "pme-persona-list");
-  listEl.textContent = "Loading personas…";
+  listEl.textContent = t`Loading personas…`;
   root.appendChild(listEl);
 
   async function loadPersonas() {
@@ -297,7 +298,7 @@ export function createPersonaList({ getPowerUser, bus }) {
     listEl.innerHTML = "";
     if (!sorted.length) {
       countEl.textContent = "(0)";
-      listEl.appendChild(el("div", "text_muted", "No personas found."));
+      listEl.appendChild(el("div", "text_muted", t`No personas found.`));
       return;
     }
 
@@ -319,14 +320,14 @@ export function createPersonaList({ getPowerUser, bus }) {
         el(
           "div",
           "pme-persona-name",
-          getPersonaName(power, id) || "[Unnamed Persona]"
+          getPersonaName(power, id) || t`[Unnamed Persona]`
         )
       );
       const rightMeta = el("div", "pme-persona-badges");
       const title = getPersonaTitle(power, id);
       rightMeta.appendChild(el("div", "pme-persona-title", title || ""));
       if (hasLorebook(power, id)) {
-        rightMeta.appendChild(el("div", "pme-persona-lorebook", "Lorebook"));
+        rightMeta.appendChild(el("div", "pme-persona-lorebook", t`Lorebook`));
       }
       nameRow.appendChild(rightMeta);
       meta.appendChild(nameRow);

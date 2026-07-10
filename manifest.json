@@ -8,5 +8,9 @@
   "css": "style.css",
   "author": "Dmitry Plyaskin",
   "version": "0.0.1",
-  "homePage": "https://github.com/dmitryplyaskin/SillyTavern-Persona-Management-Extended"
+  "homePage": "https://github.com/dmitryplyaskin/SillyTavern-Persona-Management-Extended",
+  "i18n": {
+    "en-us": "locales/en-us.json",
+    "ru-ru": "locales/ru-ru.json"
+  }
 }

@@ -1,5 +1,6 @@
 import { el, setHidden } from "./dom.js";
 import { UI_EVENTS } from "../uiBus.js";
+import { t } from "../../../../../../i18n.js";
 
 /**
  * Native Persona Management blocks we temporarily relocate into our Advanced UI.
@@ -95,7 +96,7 @@ export function createPersonaLinksGlobalSettingsCard({ bus } = {}) {
 
   const root = el("div", "pme-card pme-links");
   const header = el("div", "pme-card-title-row");
-  const title = el("div", "pme-card-title", "Connections & Global Settings");
+  const title = el("div", "pme-card-title", t`Connections & Global Settings`);
   header.appendChild(title);
 
   const actions = el("div", "pme-actions");
@@ -130,7 +131,7 @@ export function createPersonaLinksGlobalSettingsCard({ bus } = {}) {
   }
 
   function syncCollapsedUI() {
-    collapseBtn.title = collapsed ? "Expand" : "Collapse";
+    collapseBtn.title = collapsed ? t`Expand` : t`Collapse`;
     collapseBtn.innerHTML = collapsed
       ? '<i class="fa-solid fa-chevron-down"></i>'
       : '<i class="fa-solid fa-chevron-up"></i>';

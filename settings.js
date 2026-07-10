@@ -11,6 +11,7 @@ import {
 import { accountStorage } from "/scripts/util/AccountStorage.js";
 import { callGenericPopup, POPUP_TYPE } from "../../../popup.js";
 import { power_user } from "/scripts/power-user.js";
+import { t } from "../../../i18n.js";
 
 import { PME } from "./src/core/constants.js";
 
@@ -71,11 +72,11 @@ export function isExtensionEnabled() {
 async function clearAllExtensionData() {
   const confirmed = await callGenericPopup(
     `<div class="text_pole">
-      <p><strong>Are you sure you want to delete all extension data?</strong></p>
-      <p>This will permanently delete:</p>
-      <p>- All saved Additional Descriptions blocks for all personas</p>
-      <p>- Extension settings (will be reset to defaults)</p>
-      <p>This action cannot be undone.</p>
+      <p><strong>${t`Are you sure you want to delete all extension data?`}</strong></p>
+      <p>${t`This will permanently delete:`}</p>
+      <p>${t`- All saved Additional Descriptions blocks for all personas`}</p>
+      <p>${t`- Extension settings (will be reset to defaults)`}</p>
+      <p>${t`This action cannot be undone.`}</p>
     </div>`,
     POPUP_TYPE.CONFIRM,
     "",
@@ -107,24 +108,24 @@ async function clearAllExtensionData() {
     loadSettings();
 
     toastr.success(
-      `Deleted PME data for ${deletedPersonaCount} persona(s) and reset settings`,
-      "Data Cleared"
+      t`Deleted PME data for ${deletedPersonaCount} persona(s) and reset settings`,
+      t`Data Cleared`
     );
   } catch (err) {
     console.error("[PME]: Error clearing data:", err);
-    toastr.error("Failed to clear extension data", "Error");
+    toastr.error(t`Failed to clear extension data`, t`Error`);
   }
 }
 
 async function importFromUserPersonaExtended() {
   const confirmed = await callGenericPopup(
     `<div class="text_pole">
-      <p><strong>Import Additional Descriptions from "User Persona Extended"?</strong></p>
-      <p>This will:</p>
-      <p>- Read legacy data from account storage</p>
-      <p>- Import legacy entries as individual items (flat list)</p>
-      <p>- Preserve item order (title/description/enabled)</p>
-      <p>No existing PME items will be deleted.</p>
+      <p><strong>${t`Import Additional Descriptions from "User Persona Extended"?`}</strong></p>
+      <p>${t`This will:`}</p>
+      <p>${t`- Read legacy data from account storage`}</p>
+      <p>${t`- Import legacy entries as individual items (flat list)`}</p>
+      <p>${t`- Preserve item order (title/description/enabled)`}</p>
+      <p>${t`No existing PME items will be deleted.`}</p>
     </div>`,
     POPUP_TYPE.CONFIRM,
     "",
@@ -140,7 +141,7 @@ async function importFromUserPersonaExtended() {
     );
 
     if (!keys.length) {
-      toastr.info("No legacy data found to import", "Import");
+      toastr.info(t`No legacy data found to import`, t`Import`);
       return;
     }
 
@@ -197,8 +198,8 @@ async function importFromUserPersonaExtended() {
 
     if (importedPersonaCount === 0) {
       toastr.info(
-        "Legacy data was found, but nothing could be imported",
-        "Import"
+        t`Legacy data was found, but nothing could be imported`,
+        t`Import`
       );
       return;
     }
@@ -206,12 +207,12 @@ async function importFromUserPersonaExtended() {
     saveSettingsDebounced();
 
     toastr.success(
-      `Imported ${importedItemCount} item(s) into ${importedPersonaCount} persona(s)`,
-      "Import Complete"
+      t`Imported ${importedItemCount} item(s) into ${importedPersonaCount} persona(s)`,
+      t`Import Complete`
     );
   } catch (err) {
     console.error("[PME]: Import failed:", err);
-    toastr.error("Failed to import legacy data", "Error");
+    toastr.error(t`Failed to import legacy data`, t`Error`);
   }
 }
 

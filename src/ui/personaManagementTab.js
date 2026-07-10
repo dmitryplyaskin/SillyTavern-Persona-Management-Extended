@@ -1,5 +1,6 @@
 import { setPersonaDescription } from "/scripts/personas.js";
 
+import { t } from "../../../../../i18n.js";
 import { PME } from "../core/constants.js";
 import {
   getAdvancedModeEnabled,
@@ -146,7 +147,7 @@ function ensureAdvancedToggle() {
   input.checked = getAdvancedModeEnabled();
 
   const text = document.createElement("span");
-  text.textContent = "Advanced";
+  text.textContent = t`Advanced`;
 
   label.appendChild(input);
   label.appendChild(text);

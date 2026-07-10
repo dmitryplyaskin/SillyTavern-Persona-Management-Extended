@@ -1,3 +1,4 @@
+import { t } from "../../../../../../i18n.js";
 import { el } from "./dom.js";
 import {
   addGroup,
@@ -83,7 +84,7 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
 
   // --- Connections
   const secConnections = el("div", "pme-adv-section");
-  secConnections.appendChild(el("div", "pme-adv-title", "Connections"));
+  secConnections.appendChild(el("div", "pme-adv-title", t`Connections`));
 
   const connEnableLabel = el("label", "checkbox_label pme-adv-checkbox", "");
   const connEnabled = el("input");
@@ -98,14 +99,16 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
     onAnyChange?.(); // toggles AUTO/manual UI
   });
   connEnableLabel.appendChild(connEnabled);
-  connEnableLabel.appendChild(el("span", "", "Enable"));
+  connEnableLabel.appendChild(el("span", "", t`Enable`));
   secConnections.appendChild(connEnableLabel);
 
   secConnections.appendChild(
     el(
       "div",
       "text_muted pme-adv-help",
-      `When enabled, this ${kind} is activated automatically when the current chat or character matches one of the bindings below.`
+      kind === "group"
+        ? t`When enabled, this group is activated automatically when the current chat or character matches one of the bindings below.`
+        : t`When enabled, this item is activated automatically when the current chat or character matches one of the bindings below.`
     )
   );
 
@@ -115,7 +118,7 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
   addChatBtn.type = "button";
   addChatBtn.innerHTML =
     '<i class="fa-solid fa-comments"></i><span>Add chat</span>';
-  addChatBtn.title = "Add current chat to connections";
+  addChatBtn.title = t`Add current chat to connections`;
   addChatBtn.addEventListener("click", async (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -130,7 +133,7 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
       null;
 
     const next = String(
-      chatKey ?? window.prompt("Enter chat id to bind:", "") ?? ""
+      chatKey ?? window.prompt(t`Enter chat id to bind:`, "") ?? ""
     ).trim();
     if (!next) return;
 
@@ -149,7 +152,7 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
   addCharBtn.type = "button";
   addCharBtn.innerHTML =
     '<i class="fa-solid fa-user"></i><span>Add character</span>';
-  addCharBtn.title = "Add current character to connections";
+  addCharBtn.title = t`Add current character to connections`;
   addCharBtn.addEventListener("click", async (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -167,7 +170,7 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
       null;
 
     const next = String(
-      charKey ?? window.prompt("Enter character avatar to bind:", "") ?? ""
+      charKey ?? window.prompt(t`Enter character avatar to bind:`, "") ?? ""
     ).trim();
     if (!next) return;
 
@@ -203,7 +206,7 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
       "menu_button menu_button_icon pme-icon-btn pme-adv-chip-rm"
     );
     rm.type = "button";
-    rm.title = "Remove";
+    rm.title = t`Remove`;
     rm.innerHTML = '<i class="fa-solid fa-xmark"></i>';
     rm.addEventListener("click", (e) => {
       e.preventDefault();
@@ -222,11 +225,11 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
 
   if (!chats.length && !chars.length) {
     connList.appendChild(
-      el("div", "text_muted pme-adv-help", "No connections yet.")
+      el("div", "text_muted pme-adv-help", t`No connections yet.`)
     );
   } else {
     if (chats.length) {
-      connList.appendChild(el("div", "pme-adv-subtitle", "Chats"));
+      connList.appendChild(el("div", "pme-adv-subtitle", t`Chats`));
       for (const id of chats) {
         connList.appendChild(
           makeChip({ label: id, title: `Chat: ${id}` }, () => {
@@ -240,7 +243,7 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
       }
     }
     if (chars.length) {
-      connList.appendChild(el("div", "pme-adv-subtitle", "Characters"));
+      connList.appendChild(el("div", "pme-adv-subtitle", t`Characters`));
       for (const id of chars) {
         // Render a placeholder chip and hydrate with name/avatar from ST context when available.
         const chip = makeChip({ label: id, title: `Character: ${id}` }, () => {
@@ -264,7 +267,7 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
     el(
       "div",
       "pme-adv-count text_muted",
-      `Chats: ${chatCount}, Characters: ${charCount}`
+      t`Chats: ${chatCount}, Characters: ${charCount}`
     )
   );
 
@@ -316,7 +319,7 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
 
   // --- Match / Trigger
   const secMatch = el("div", "pme-adv-section");
-  secMatch.appendChild(el("div", "pme-adv-title", "Match"));
+  secMatch.appendChild(el("div", "pme-adv-title", t`Match`));
 
   const matchEnableLabel = el("label", "checkbox_label pme-adv-checkbox", "");
   const matchEnabled = el("input");
@@ -331,12 +334,12 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
     onAnyChange?.(); // toggles AUTO/manual UI
   });
   matchEnableLabel.appendChild(matchEnabled);
-  matchEnableLabel.appendChild(el("span", "", "Enable match rule"));
+  matchEnableLabel.appendChild(el("span", "", t`Enable match rule`));
   secMatch.appendChild(matchEnableLabel);
 
   const matchInput = el("input", "text_pole pme-adv-input");
   matchInput.type = "text";
-  matchInput.placeholder = "Text or /regex/flags";
+  matchInput.placeholder = t`Text or /regex/flags`;
   matchInput.value = typeof match.query === "string" ? match.query : "";
   matchInput.addEventListener("input", () => {
     patch({
@@ -351,7 +354,7 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
     el(
       "div",
       "text_muted pme-adv-help",
-      "Matches against: Character → Description."
+      t`Matches against: Character → Description.`
     )
   );
   body.appendChild(secMatch);
@@ -362,7 +365,7 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
       el(
         "div",
         "text_muted pme-adv-help",
-        "Group rules control the activation of the group as a whole. Items inside the group keep their own activation settings. If AUTO is enabled on both levels, make sure the rules are not contradictory."
+        t`Group rules control the activation of the group as a whole. Items inside the group keep their own activation settings. If AUTO is enabled on both levels, make sure the rules are not contradictory.`
       )
     );
   }
@@ -372,7 +375,7 @@ function renderAdvancedControls(entity, { kind, patch, onAnyChange }) {
     el(
       "div",
       "text_muted pme-adv-footer",
-      "AUTO mode disables the manual toggle. When enabled, activation is driven by Connections and/or Match rules."
+      t`AUTO mode disables the manual toggle. When enabled, activation is driven by Connections and/or Match rules.`
     )
   );
 
@@ -416,16 +419,16 @@ function renderItem(
   const titleInput = el("input", "text_pole pme-item-title");
   titleInput.type = "text";
   titleInput.value = item.title ?? "";
-  titleInput.placeholder = "Title";
+  titleInput.placeholder = t`Title`;
   titleInput.addEventListener("input", () => {
     patchItem(item.id, { title: titleInput.value });
   });
   top.appendChild(titleInput);
 
   if (autoActive) {
-    const autoTag = el("div", "pme-auto-tag", "AUTO");
+    const autoTag = el("div", "pme-auto-tag", t`AUTO`);
     autoTag.title =
-      "Auto activation enabled (manual toggle disabled for this item).";
+      t`Auto activation enabled (manual toggle disabled for this item).`;
     top.appendChild(autoTag);
   } else {
     const enabledLabel = el("label", "checkbox_label pme-item-enabled");
@@ -437,11 +440,11 @@ function renderItem(
       row.classList.toggle("pme-item-disabled", !enabled.checked);
     });
     enabledLabel.appendChild(enabled);
-    enabledLabel.appendChild(el("span", "", "Enabled"));
+    enabledLabel.appendChild(el("span", "", t`Enabled`));
     top.appendChild(enabledLabel);
   }
 
-  const moveUpBtn = makeMoveButton("Move up", "fa-arrow-up", {
+  const moveUpBtn = makeMoveButton(t`Move up`, "fa-arrow-up", {
     disabled: !canMoveUp,
     onClick: () => {
       onMoveUp?.();
@@ -450,7 +453,7 @@ function renderItem(
   });
   top.appendChild(moveUpBtn);
 
-  const moveDownBtn = makeMoveButton("Move down", "fa-arrow-down", {
+  const moveDownBtn = makeMoveButton(t`Move down`, "fa-arrow-down", {
     disabled: !canMoveDown,
     onClick: () => {
       onMoveDown?.();
@@ -464,7 +467,7 @@ function renderItem(
     "menu_button menu_button_icon pme-icon-btn pme-item-delete"
   );
   deleteBtn.type = "button";
-  deleteBtn.title = "Delete";
+  deleteBtn.title = t`Delete`;
   deleteBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
   deleteBtn.addEventListener("click", () => {
     removeItem(item.id);
@@ -477,7 +480,7 @@ function renderItem(
     "menu_button menu_button_icon pme-icon-btn pme-item-collapse"
   );
   collapseBtn.type = "button";
-  collapseBtn.title = item.collapsed ? "Expand" : "Collapse";
+  collapseBtn.title = item.collapsed ? t`Expand` : t`Collapse`;
   collapseBtn.innerHTML = item.collapsed
     ? '<i class="fa-solid fa-chevron-down"></i>'
     : '<i class="fa-solid fa-chevron-up"></i>';
@@ -495,19 +498,19 @@ function renderItem(
   textarea.id = textareaId;
   textarea.rows = 4;
   textarea.value = item.text ?? "";
-  textarea.placeholder = "Text to inject when enabled...";
+  textarea.placeholder = t`Text to inject when enabled...`;
 
   body.appendChild(textarea);
 
   const footer = el("div", "pme-item-footer");
   const maxBtn = document.createElement("i");
   maxBtn.className = "editor_maximize fa-solid fa-maximize right_menu_button";
-  maxBtn.title = "Expand the editor";
+  maxBtn.title = t`Expand the editor`;
   maxBtn.setAttribute("data-for", textareaId);
   footer.appendChild(maxBtn);
 
   const tokenBox = el("div", "pme-token-box pme-item-token-box");
-  tokenBox.appendChild(el("span", "", "Tokens: "));
+  tokenBox.appendChild(el("span", "", t`Tokens: `));
   const tokenCount = el("span", "pme-token-count", "0");
   tokenBox.appendChild(tokenCount);
   footer.appendChild(tokenBox);
@@ -583,16 +586,16 @@ function renderGroup(
   const titleInput = el("input", "text_pole pme-group-title");
   titleInput.type = "text";
   titleInput.value = group.title ?? "";
-  titleInput.placeholder = "Group title";
+  titleInput.placeholder = t`Group title`;
   titleInput.addEventListener("input", () => {
     patchGroup(group.id, { title: titleInput.value });
   });
   top.appendChild(titleInput);
 
   if (autoActive) {
-    const autoTag = el("div", "pme-auto-tag", "AUTO");
+    const autoTag = el("div", "pme-auto-tag", t`AUTO`);
     autoTag.title =
-      "Auto activation enabled (manual toggle disabled for this group).";
+      t`Auto activation enabled (manual toggle disabled for this group).`;
     top.appendChild(autoTag);
   } else {
     const enabledLabel = el("label", "checkbox_label pme-group-enabled");
@@ -604,11 +607,11 @@ function renderGroup(
       wrap.classList.toggle("pme-group-disabled", !enabled.checked);
     });
     enabledLabel.appendChild(enabled);
-    enabledLabel.appendChild(el("span", "", "Enabled"));
+    enabledLabel.appendChild(el("span", "", t`Enabled`));
     top.appendChild(enabledLabel);
   }
 
-  const moveUpBtn = makeMoveButton("Move group up", "fa-arrow-up", {
+  const moveUpBtn = makeMoveButton(t`Move group up`, "fa-arrow-up", {
     disabled: !canMoveUp,
     onClick: () => {
       onMoveUp?.();
@@ -617,7 +620,7 @@ function renderGroup(
   });
   top.appendChild(moveUpBtn);
 
-  const moveDownBtn = makeMoveButton("Move group down", "fa-arrow-down", {
+  const moveDownBtn = makeMoveButton(t`Move group down`, "fa-arrow-down", {
     disabled: !canMoveDown,
     onClick: () => {
       onMoveDown?.();
@@ -629,7 +632,7 @@ function renderGroup(
   const addBtn = el("button", "menu_button menu_button_icon pme-group-add");
   addBtn.classList.add("pme-icon-btn");
   addBtn.type = "button";
-  addBtn.title = "Add Item";
+  addBtn.title = t`Add Item`;
   addBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
   addBtn.addEventListener("click", () => {
     addItemToGroup(group.id);
@@ -642,7 +645,7 @@ function renderGroup(
     "menu_button menu_button_icon pme-icon-btn pme-group-delete"
   );
   deleteBtn.type = "button";
-  deleteBtn.title = "Delete Group";
+  deleteBtn.title = t`Delete Group`;
   deleteBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
   deleteBtn.addEventListener("click", () => {
     removeGroup(group.id);
@@ -655,7 +658,7 @@ function renderGroup(
     "menu_button menu_button_icon pme-icon-btn pme-group-collapse"
   );
   collapseBtn.type = "button";
-  collapseBtn.title = group.collapsed ? "Expand" : "Collapse";
+  collapseBtn.title = group.collapsed ? t`Expand` : t`Collapse`;
   collapseBtn.innerHTML = group.collapsed
     ? '<i class="fa-solid fa-chevron-down"></i>'
     : '<i class="fa-solid fa-chevron-up"></i>';
@@ -669,7 +672,7 @@ function renderGroup(
 
   const items = Array.isArray(group.items) ? group.items : [];
   if (!items.length) {
-    body.appendChild(el("div", "text_muted", "No items in this group yet."));
+    body.appendChild(el("div", "text_muted", t`No items in this group yet.`));
   } else {
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -710,7 +713,7 @@ export function createAdditionalDescriptionsCard() {
 
   const root = el("div", "pme-card pme-additional");
   const header = el("div", "pme-card-title-row");
-  header.appendChild(el("div", "pme-card-title", "Additional Descriptions"));
+  header.appendChild(el("div", "pme-card-title", t`Additional Descriptions`));
 
   const actions = el("div", "pme-actions");
 
@@ -719,7 +722,7 @@ export function createAdditionalDescriptionsCard() {
     "menu_button menu_button_icon pme-icon-btn"
   );
   fullscreenBtn.type = "button";
-  fullscreenBtn.title = "Open fullscreen";
+  fullscreenBtn.title = t`Open fullscreen`;
   fullscreenBtn.innerHTML =
     '<i class="fa-solid fa-up-right-and-down-left-from-center"></i>';
   actions.appendChild(fullscreenBtn);
@@ -729,7 +732,7 @@ export function createAdditionalDescriptionsCard() {
     "menu_button menu_button_icon pme-icon-btn pme-add-btn"
   );
   addBtn.type = "button";
-  addBtn.title = "Add Item";
+  addBtn.title = t`Add Item`;
   addBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
   actions.appendChild(addBtn);
 
@@ -738,13 +741,13 @@ export function createAdditionalDescriptionsCard() {
     "menu_button menu_button_icon pme-icon-btn pme-add-group-btn"
   );
   addGroupBtn.type = "button";
-  addGroupBtn.title = "Add Group";
+  addGroupBtn.title = t`Add Group`;
   addGroupBtn.innerHTML = '<i class="fa-solid fa-folder-plus"></i>';
   actions.appendChild(addGroupBtn);
 
   const collapseBtn = el("button", "menu_button menu_button_icon pme-icon-btn");
   collapseBtn.type = "button";
-  collapseBtn.title = "Collapse";
+  collapseBtn.title = t`Collapse`;
   collapseBtn.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
   actions.appendChild(collapseBtn);
 
@@ -765,7 +768,7 @@ export function createAdditionalDescriptionsCard() {
         el(
           "div",
           "text_muted",
-          "No additional descriptions yet. Click + to add an item or G+ to add a group."
+          t`No additional descriptions yet. Click + to add an item or G+ to add a group.`
         )
       );
       return;
@@ -811,7 +814,7 @@ export function createAdditionalDescriptionsCard() {
   function syncCollapsed() {
     body.classList.toggle("displayNone", collapsed);
     root.classList.toggle("pme-collapsed", collapsed);
-    collapseBtn.title = collapsed ? "Expand" : "Collapse";
+    collapseBtn.title = collapsed ? t`Expand` : t`Collapse`;
     collapseBtn.innerHTML = collapsed
       ? '<i class="fa-solid fa-chevron-down"></i>'
       : '<i class="fa-solid fa-chevron-up"></i>';
@@ -825,7 +828,7 @@ export function createAdditionalDescriptionsCard() {
   fullscreenBtn.addEventListener("click", async () => {
     // Create a fresh editor instance for the popup
     const wrapper = el("div", "pme-additional-fullscreen");
-    wrapper.appendChild(el("div", "pme-card-title", "Additional Descriptions"));
+    wrapper.appendChild(el("div", "pme-card-title", t`Additional Descriptions`));
 
     const editor = el("div", "pme-add-list");
     wrapper.appendChild(editor);
@@ -838,7 +841,7 @@ export function createAdditionalDescriptionsCard() {
           el(
             "div",
             "text_muted",
-            "No additional descriptions yet. Click + to add an item or G+ to add a group."
+            t`No additional descriptions yet. Click + to add an item or G+ to add a group.`
           )
         );
         return;
@@ -883,7 +886,7 @@ export function createAdditionalDescriptionsCard() {
       "menu_button menu_button_icon pme-icon-btn pme-add-btn"
     );
     addItemBtn2.type = "button";
-    addItemBtn2.title = "Add Item";
+    addItemBtn2.title = t`Add Item`;
     addItemBtn2.innerHTML = '<i class="fa-solid fa-plus"></i>';
     addItemBtn2.addEventListener("click", () => {
       addItem();
@@ -897,7 +900,7 @@ export function createAdditionalDescriptionsCard() {
       "menu_button menu_button_icon pme-icon-btn pme-add-group-btn"
     );
     addGroupBtn2.type = "button";
-    addGroupBtn2.title = "Add Group";
+    addGroupBtn2.title = t`Add Group`;
     addGroupBtn2.innerHTML = '<i class="fa-solid fa-folder-plus"></i>';
     addGroupBtn2.addEventListener("click", () => {
       addGroup();

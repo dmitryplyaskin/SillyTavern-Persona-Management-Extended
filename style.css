@@ -90,6 +90,7 @@
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 6px;
+  flex-wrap: wrap;
 }
 
 .pme-current-title {
@@ -167,8 +168,8 @@
 .pme-position-select {
   height: 32px;
   border-radius: 8px;
-  flex: 1 1 260px;
-  min-width: 260px;
+  flex: 1 1 200px;
+  min-width: 0;
   max-width: 100%;
 }
 
@@ -176,7 +177,7 @@
   display: flex;
   gap: 10px;
   align-items: center;
-  flex: 1 1 260px;
+  flex: 1 1 200px;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
@@ -324,6 +325,7 @@
   justify-content: space-between;
   gap: 8px;
   min-width: 0;
+  flex-wrap: wrap;
 }
 
 .pme-persona-name {
@@ -350,8 +352,9 @@
   justify-content: flex-end;
   gap: 8px;
   min-width: 0;
-  max-width: 55%;
+  max-width: 100%;
   flex: 0 1 auto;
+  flex-wrap: wrap;
 }
 
 .pme-persona-lorebook {
@@ -397,14 +400,15 @@
 }
 
 .pme-group-top {
-  display: grid;
-  grid-template-columns: 1fr auto auto auto auto auto auto;
+  display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .pme-group-title {
-  min-width: 160px;
+  min-width: 100px;
+  flex: 1 1 140px;
 }
 
 .pme-group-enabled {
@@ -436,10 +440,10 @@
 }
 
 .pme-item-top {
-  display: grid;
-  grid-template-columns: 1fr auto auto auto auto auto;
+  display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .pme-move-btn:disabled {
@@ -448,7 +452,8 @@
 }
 
 .pme-item-title {
-  min-width: 140px;
+  min-width: 100px;
+  flex: 1 1 140px;
 }
 
 .pme-item-enabled {
